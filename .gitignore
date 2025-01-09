@@ -2,3 +2,4 @@
 .DS_Store
 /.idea
 /apiKey.txt
+src/strom/__pycache__
