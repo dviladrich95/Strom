@@ -2,6 +2,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cvxpy as cp
 
+import requests
+from datetime import datetime
+import pandas as pd
+
 def call_api():
     price = 1
     return price
@@ -10,6 +14,46 @@ def get_api_key(key_path):
     with open(key_path, 'r') as file:
         api_key = file.read().strip()  # Read the file
     return api_key
+
+def get_weather_data():
+    time_steps = 24  # 24 hours in a day
+
+    #open weather map api key text file at the path config/weather_api_key.txt
+    with open('../config/weather_api_key.txt') as f:
+        API_KEY = f.read().strip()
+
+    call_str = "https://api.openweathermap.org/data/2.5/forecast?q=Barcelona&appid="+API_KEY
+
+    # Make the API call
+    response = requests.get(call_str)
+
+    # Check if the request was successful (status code 200)
+    if response.status_code == 200:
+        data = response.json()  # Parse the JSON response
+
+        # Prepare lists for timestamps and temperatures
+        timestamps = [datetime.utcfromtimestamp(entry['dt']) for entry in data['list']]
+        temperatures = [entry['main']['temp'] for entry in data['list']]
+
+        # Create a DataFrame
+        df = pd.DataFrame({
+            'Timestamp': timestamps,
+            'Temperature (K)': temperatures
+        })
+
+        # Convert temperature from Kelvin to Celsius
+        df['Temperature (°C)'] = df['Temperature (K)'] - 273.15
+        # remove the temperature in Kelvin
+        df = df.drop(columns=['Temperature (K)'])
+    else:
+        print(f"Error: {response.status_code}")
+
+    # this is a 3 hour forecast, so we have 8 data points per day, interpolate the missing data points
+    df = df.set_index('Timestamp').resample('h').interpolate().reset_index()
+
+    # trim the dataframe to only include the first 24 hours
+    df = df.head(time_steps)
+    return df
 
 def data_analysis(prices):
 
