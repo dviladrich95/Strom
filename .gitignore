@@ -4,3 +4,4 @@
 /apiKey.txt
 src/strom/__pycache__
 data/*
+.env
