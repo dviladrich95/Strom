@@ -21,9 +21,13 @@ This project is designed to perform data analysis and interact with an API to re
     pip install -r requirements.txt
     ```
 
-4. If you don't use the api call to get the data, you can put it in the data folder.
+4. Create your "config" folder in the root project directory
+5. Place your API key in a "apiKey.txt" file that you save in the config folder
+6. Optionally: Place your tapo account credentials in a text file in the config folder
 
 ## Usage
 To run the main script:
 ```sh
 python main.py
+
+
