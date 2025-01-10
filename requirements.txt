@@ -2,10 +2,13 @@ aiohappyeyeballs==2.4.4
 aiohttp==3.11.11
 aiosignal==1.3.2
 anyio==4.8.0
+appnope==0.1.4
 asttokens==3.0.0
 asyncclick==8.1.8.0
 attrs==24.3.0
+certifi==2024.12.14
 cffi==1.17.1
+charset-normalizer==3.4.1
 comm==0.2.2
 cryptography==44.0.0
 debugpy==1.8.11
@@ -28,6 +31,7 @@ packaging==24.2
 pandas==2.2.3
 parso==0.8.4
 pexpect==4.9.0
+pipdeptree==2.24.0
 platformdirs==4.3.6
 pluggy==1.5.0
 prompt_toolkit==3.0.48
@@ -42,6 +46,7 @@ python-dateutil==2.9.0.post0
 python-kasa==0.9.1
 pytz==2024.2
 pyzmq==26.2.0
+requests==2.32.3
 six==1.17.0
 sniffio==1.3.1
 stack-data==0.6.3
@@ -49,5 +54,6 @@ tornado==6.4.2
 traitlets==5.14.3
 typing_extensions==4.12.2
 tzdata==2024.2
+urllib3==2.3.0
 wcwidth==0.2.13
 yarl==1.18.3
