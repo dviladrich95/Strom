@@ -2,8 +2,8 @@ import requests
 from src.strom import utils
 
 
-apikey = utils.get_api_key('../config/apiKey.txt')
-query = "https://web-api.tp.entsoe.eu/api?documentType=A65&processType=A16&outBiddingZone_Domain=10YCZ-CEPS-----N&periodStart=202303030000&periodEnd=202303060000&securityToken="
+apikey = utils.get_api_key('../config/apiKey.txt') #please see readme to see how to create your config folder with the API key
+query = "https://web-api.tp.entsoe.eu/api?documentType=A44&periodStart=202501102200&periodEnd=202501112200&out_Domain=10YAT-APG------L&in_Domain=10YAT-APG------L&securityToken="
 
 response = requests.get(query + apikey)
 

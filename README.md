@@ -21,7 +21,7 @@ This project is designed to perform data analysis and interact with an API to re
     pip install -r requirements.txt
     ```
 
-4. Create your "config" folder in the root project directory
+4. Create your "config" folder in the root project directory. This folder is where we save secret keys.
 5. Place your API key in a "apiKey.txt" file that you save in the config folder
 6. Optionally: Place your tapo account credentials in a text file in the config folder
 

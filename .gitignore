@@ -1,5 +1,5 @@
 /venv/
 .DS_Store
 /.idea
-/apiKey.txt
+/config/apiKey.txt
 src/strom/__pycache__
