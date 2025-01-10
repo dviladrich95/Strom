@@ -3,3 +3,4 @@
 /.idea
 /apiKey.txt
 src/strom/__pycache__
+scripts/*.ipynb
