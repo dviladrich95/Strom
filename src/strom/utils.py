@@ -7,3 +7,7 @@ def get_api_key(key_path):
         api_key = file.read().strip()  # Read the file
     return api_key
 
+def data_analysis(data,decision = True,reverse = True):
+    if reverse:
+        decision = not(decision)
+    return decision
