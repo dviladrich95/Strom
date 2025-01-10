@@ -11,3 +11,7 @@ def data_analysis(data,decision = True,reverse = True):
     if reverse:
         decision = not(decision)
     return decision
+
+def automation_kasa(decision):
+    status = []
+    return status
