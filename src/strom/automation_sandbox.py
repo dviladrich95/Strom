@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 import os
 
 # Load the environment variables from the .env file
-load_dotenv(dotenv_path="/Users/huber/PycharmProjects/Strom/config/tapologin.env")
+load_dotenv(dotenv_path="../../config/tapologin.env")
 
 device_ip = "192.168.1.16"
 email = os.getenv("EMAIL")  # Get email from the environment variable
