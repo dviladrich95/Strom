@@ -5,6 +5,11 @@ import cvxpy as cp
 import requests
 from datetime import datetime
 import pandas as pd
+import os
+import xml.etree.ElementTree as ET
+
+from entsoe import EntsoePandasClient
+import pandas as pd
 
 def find_root_dir(target_folder="Strom"):
     """
@@ -34,11 +39,12 @@ def get_api_key(key_path):
 def get_weather_data():
     time_steps = 24  # 24 hours in a day
 
-    #open weather map api key text file at the path config/weather_api_key.txt
-    with open('../config/weather_api_key.txt') as f:
+    # open weather map API key text file
+    os.chdir(find_root_dir())
+    with open('./config/weather_api_key.txt') as f:
         API_KEY = f.read().strip()
 
-    call_str = "https://api.openweathermap.org/data/2.5/forecast?q=Barcelona&appid="+API_KEY
+    call_str = "https://api.openweathermap.org/data/2.5/forecast?q=Barcelona&appid=" + API_KEY
 
     # Make the API call
     response = requests.get(call_str)
@@ -48,37 +54,77 @@ def get_weather_data():
         data = response.json()  # Parse the JSON response
 
         # Prepare lists for timestamps and temperatures
-        timestamps = [datetime.utcfromtimestamp(entry['dt']) for entry in data['list']]
+        timestamps = [
+            pd.Timestamp(entry['dt'], unit='s', tz='UTC').tz_convert('Europe/Madrid')  # Convert to Madrid timezone
+            for entry in data['list']
+        ]
         temperatures = [entry['main']['temp'] for entry in data['list']]
 
         # Create a DataFrame
-        df = pd.DataFrame({
+        temp_df = pd.DataFrame({
             'Timestamp': timestamps,
             'Temperature (K)': temperatures
         })
 
         # Convert temperature from Kelvin to Celsius
-        df['Temperature (°C)'] = df['Temperature (K)'] - 273.15
-        # remove the temperature in Kelvin
-        df = df.drop(columns=['Temperature (K)'])
+        temp_df['Temperature (°C)'] = temp_df['Temperature (K)'] - 273.15
+        # Remove the temperature in Kelvin
+        temp_df = temp_df.drop(columns=['Temperature (K)'])
     else:
         print(f"Error: {response.status_code}")
 
-    # this is a 3 hour forecast, so we have 8 data points per day, interpolate the missing data points
-    df = df.set_index('Timestamp').resample('h').interpolate().reset_index()
+    # This is a 3-hour forecast, so we have 8 data points per day, interpolate the missing data points
+    temp_df = temp_df.set_index('Timestamp').resample('h').interpolate().reset_index()
 
-    # trim the dataframe to only include the first 24 hours
-    df = df.head(time_steps)
-    return df
+    # Generate exactly 24-hour range
+    start_time = pd.Timestamp.now(tz='Europe/Madrid').floor('h')
+    end_time = start_time + pd.Timedelta(hours=time_steps)
+    full_range = pd.date_range(start=start_time + pd.Timedelta(hours=1), end=end_time, freq='h', tz='Europe/Madrid')
+    temp_df = temp_df.set_index('Timestamp').reindex(full_range).interpolate().reset_index()
+    temp_df.columns = ['Timestamp', 'Temperature (°C)']  # Rename columns
 
-def data_analysis(prices):
+    return temp_df
+
+def get_prices():
+    apikey = get_api_key('./config/apiKey.txt')  # Please see readme to see how to create your config folder with the API key
+
+    # Replace with your API key
+    client = EntsoePandasClient(api_key=apikey)
+
+    # Define the current timestamp (now) and timezone
+    start = pd.Timestamp.now(tz='Europe/Madrid')  # Current time in Madrid timezone
+    end = start + pd.Timedelta(hours=24)  # 24 hours after the current time
+
+    # Country code for Spain
+    country_code = 'ES'  # Spain
+
+    # Querying the day-ahead prices for Spain
+    prices_series = client.query_day_ahead_prices(country_code, start=start, end=end)
+
+    # Convert the Series to a DataFrame and rename columns
+    prices_df = prices_series.to_frame(name='Price').reset_index()
+    prices_df.rename(columns={'index': 'Timestamp'}, inplace=True)
+
+    return prices_df
+
+def join_data(temp_df, prices_df):
+    
+    # Merge the dataframes on the 'Timestamp' column
+    df = pd.merge(temp_df, prices_df, on='Timestamp')
+
+    # Extract the temperature and prices as numpy arrays
+    temperature = df['Temperature (°C)'].values
+    prices = df['Price'].values
+
+    return df  # Returning the merged dataframe
+
+def find_optimal_heating_decision(prices,temperature):
 
     # Parameters
     time_steps = 24  # 24 hours in a day
-    hours = np.arange(time_steps)
 
     # Simulate outdoor temperature (cool at night, warm in the day)
-    outdoor_temperature = 10 + -5 * np.cos(2 * np.pi * hours / 24)
+    outdoor_temperature = temperature
 
     # Thermal properties
     heat_loss = 0.1  # Heat loss rate per degree difference per hour
@@ -117,8 +163,8 @@ def data_analysis(prices):
 
     # Solve the problem
     problem.solve()
+    
     decision = heater_state.value
-
     return decision
 
 def automation_kasa(decision):
