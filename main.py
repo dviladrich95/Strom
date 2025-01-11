@@ -6,3 +6,4 @@ def print_price():
 
 if __name__ == '__main__':
     print_price()
+

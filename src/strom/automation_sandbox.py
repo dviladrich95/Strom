@@ -2,6 +2,7 @@ import asyncio
 from kasa import Discover
 from dotenv import load_dotenv
 import os
+from src.strom import utils
 
 # Load the environment variables from the .env file
 load_dotenv(dotenv_path="../../config/tapologin.env")
@@ -15,26 +16,28 @@ async def main():
     try:
         # Discover the device
         dev = await Discover.discover_single(device_ip, username=email, password=password)
-
+        temp_df = utils.get_weather_data()
+        prices_df = utils.get_prices()
+        temp_price_df = utils.join_data(temp_df, prices_df)
         # Prompt the user for input (0 for off, 1 for on)
-        user_input = input("Enter 1 to turn the light on, 0 to turn it off: ")
-
+        user_input = bool(utils.find_optimal_heating_decision(temp_price_df))
         # Check user input and turn the light on or off accordingly
-        if user_input == "1":
+        print(user_input)
+        if user_input:
             await dev.turn_on()
             print("Device turned on.")
-        elif user_input == "0":
+        else:
             await dev.turn_off()
             print("Device turned off.")
-        else:
-            print("Invalid input. Please enter 0 or 1.")
+       # else:
+        #    print("Invalid input. Please enter 0 or 1.")
 
         # Update the device state after action
         await dev.update()
         print(f"Device state: {'ON' if dev.is_on else 'OFF'}")
 
         # Close the device connection manually
-        await dev.close()
+        await dev.async_close()
         print("Device connection closed.")
 
     except Exception as e:

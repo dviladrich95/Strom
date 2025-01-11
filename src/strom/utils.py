@@ -110,21 +110,21 @@ def get_prices():
 def join_data(temp_df, prices_df):
     
     # Merge the dataframes on the 'Timestamp' column
-    df = pd.merge(temp_df, prices_df, on='Timestamp')
+    temp_price_df = pd.merge(temp_df, prices_df, on='Timestamp')
 
     # Extract the temperature and prices as numpy arrays
-    temperature = df['Temperature (°C)'].values
-    prices = df['Price'].values
+    temperature = temp_price_df['Temperature (°C)'].values
+    prices = temp_price_df['Price'].values
 
-    return df  # Returning the merged dataframe
+    return temp_price_df  # Returning the merged dataframe
 
-def find_optimal_heating_decision(prices,temperature):
+def find_optimal_heating_decision(temp_price_df):
 
     # Parameters
     time_steps = 24  # 24 hours in a day
 
     # Simulate outdoor temperature (cool at night, warm in the day)
-    outdoor_temperature = temperature
+    outdoor_temperature = temp_price_df["Temperature (°C)"]
 
     # Thermal properties
     heat_loss = 0.1  # Heat loss rate per degree difference per hour
@@ -137,7 +137,7 @@ def find_optimal_heating_decision(prices,temperature):
     indoor_temperature = cp.Variable(time_steps)
 
     # Objective: Minimize cost
-    cost = cp.sum(cp.multiply(prices, heater_state * heating_power))
+    cost = cp.sum(cp.multiply(temp_price_df["Price"], heater_state * heating_power))
     objective = cp.Minimize(cost)
 
     # Constraints
@@ -164,7 +164,7 @@ def find_optimal_heating_decision(prices,temperature):
     # Solve the problem
     problem.solve()
     
-    decision = heater_state.value
+    decision = heater_state.value[0]
     return decision
 
 def automation_kasa(decision):
