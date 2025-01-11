@@ -7,3 +7,5 @@ scripts/*.ipynb
 /.vscode
 tests/__pycache__/*
 /strom.egg-info
+data/*
+src/__pycache__/__init__.cpython-312.pyc
