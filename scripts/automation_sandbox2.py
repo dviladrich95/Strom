@@ -3,7 +3,7 @@ from kasa import Discover
 from datetime import datetime
 from dotenv import load_dotenv
 import os
-
+#the lost sandbox 2 i never pushed
 # Load .env file for credentials
 load_dotenv(dotenv_path="/Users/huber/PycharmProjects/Strom/config/tapologin.env")
 email = os.getenv("EMAIL")
