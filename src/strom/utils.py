@@ -6,6 +6,22 @@ import requests
 from datetime import datetime
 import pandas as pd
 
+def find_root_dir(target_folder="Strom"):
+    """
+    Traverse up the directory tree to find the target folder and return its absolute path.
+    """
+    current_dir = os.getcwd()
+    
+    while True:
+        if target_folder in os.listdir(current_dir):
+            return os.path.abspath(os.path.join(current_dir, target_folder))
+        
+        parent_dir = os.path.dirname(current_dir)
+        if parent_dir == current_dir:  # Reached the filesystem root
+            raise FileNotFoundError(f"'{target_folder}' folder not found in any parent directories.")
+        
+        current_dir = parent_dir
+
 def call_api():
     price = 1
     return price
