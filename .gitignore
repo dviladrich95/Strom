@@ -4,3 +4,6 @@
 src/strom/__pycache__
 /config
 scripts/*.ipynb
+/.vscode
+tests/__pycache__/*
+/strom.egg-info
