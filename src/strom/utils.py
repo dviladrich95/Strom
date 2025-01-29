@@ -125,13 +125,13 @@ def get_prices():
         pandas.DataFrame: A DataFrame containing the timestamps and corresponding day-ahead 
         electricity prices for Spain.
     Note:
-        Ensure that the API key is correctly placed in the './config/apiKey.txt' file as 
+        Ensure that the API key is correctly placed in the './config/price_api_key.txt' file as 
         specified in the readme.
     """
-    apikey = get_api_key('./config/apiKey.txt')  # Please see readme to see how to create your config folder with the API key
+    price_api_key = get_api_key('./config/price_api_key.txt')  # Please see readme to see how to create your config folder with the API key
 
     # Replace with your API key
-    client = EntsoePandasClient(api_key=apikey)
+    client = EntsoePandasClient(api_key=price_api_key)
 
     # Define the current timestamp (now) and timezone
     start = pd.Timestamp.now(tz='Europe/Madrid')  # Current time in Madrid timezone

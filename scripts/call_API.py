@@ -10,9 +10,9 @@ timeframe = "&periodStart=202501110100&periodEnd=202501120100"
 domain = "&out_Domain=10YAT-APG------L&in_Domain=10YAT-APG------L"
 security = "&securityToken="
 os.chdir(utils.find_root_dir())
-apikey = utils.get_api_key('./config/apiKey.txt') #please see readme to see how to create your config folder with the API key
+price_api_key = utils.get_api_key('./config/price_api_key.txt') #please see readme to see how to create your config folder with the API key
 
-response = requests.get(query + timeframe + domain + security + apikey)
+response = requests.get(query + timeframe + domain + security + price_api_key)
 
 #print(response.text)
 
