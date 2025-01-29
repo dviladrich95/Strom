@@ -9,6 +9,7 @@ load_dotenv(dotenv_path="/Users/huber/PycharmProjects/Strom/config/tapologin.env
 email = os.getenv("EMAIL")
 password = os.getenv("PASSWORD")
 
+
 device_ip = "192.168.1.16"
 
 # The 24-hour schedule as a list of 1s and 0s
