@@ -1,4 +1,4 @@
-from src.strom import utils
+from strom import utils
 
 def print_price():
     price = utils.call_api()

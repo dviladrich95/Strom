@@ -2,7 +2,7 @@ import asyncio
 from kasa import Discover
 from dotenv import load_dotenv
 import os
-from src.strom import utils
+from strom import utils
 
 # Load the environment variables from the .env file
 load_dotenv(dotenv_path="../../config/tapologin.env")

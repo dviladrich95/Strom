@@ -1,5 +1,5 @@
 import requests
-from src.strom import utils
+from strom import utils
 from datetime import date
 import os
 import xml.etree.ElementTree as ET
