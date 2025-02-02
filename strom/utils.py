@@ -13,7 +13,16 @@ import pandas as pd
 
 def find_root_dir(target_folder="Strom"):
     """
-    Traverse up the directory tree to find the target folder and return its absolute path.
+    Recursively searches for the specified target folder in the current directory
+    and its parent directories, returning the absolute path to the target folder
+    if found.
+    Args:
+        target_folder (str): The name of the folder to search for. Defaults to "Strom".
+    Returns:
+        str: The absolute path to the target folder if found.
+    Raises:
+        FileNotFoundError: If the target folder is not found in the current directory
+                           or any of its parent directories.
     """
     current_dir = os.getcwd()
     
@@ -27,16 +36,36 @@ def find_root_dir(target_folder="Strom"):
         
         current_dir = parent_dir
 
-def call_api():
-    price = 1
-    return price
-
 def get_api_key(key_path):
+    """
+    Reads an API key from a file.
+
+    Args:
+        key_path (str): The path to the file containing the API key.
+
+    Returns:
+        str: The API key read from the file.
+    """
     with open(key_path, 'r') as file:
         api_key = file.read().strip()  # Read the file
     return api_key
 
 def get_weather_data():
+    """
+    Fetches weather data for Barcelona from the OpenWeatherMap API, processes it, and returns a DataFrame with hourly temperature data.
+    The function performs the following steps:
+    1. Reads the OpenWeatherMap API key from a configuration file.
+    2. Makes an API call to fetch the weather forecast data for Barcelona.
+    3. Parses the JSON response to extract timestamps and temperatures.
+    4. Converts the timestamps to the 'Europe/Madrid' timezone.
+    5. Converts temperatures from Kelvin to Celsius.
+    6. Interpolates missing data points to generate an hourly temperature DataFrame.
+    7. Ensures the DataFrame covers exactly a 24-hour range starting from the current hour.
+    Returns:
+        pd.DataFrame: A DataFrame with two columns:
+            - 'Timestamp': Timestamps in the 'Europe/Madrid' timezone.
+            - 'Temperature (°C)': Temperatures in Celsius.
+    """
     time_steps = 24  # 24 hours in a day
 
     # open weather map API key text file
@@ -86,10 +115,23 @@ def get_weather_data():
     return temp_df
 
 def get_prices():
-    apikey = get_api_key('./config/apiKey.txt')  # Please see readme to see how to create your config folder with the API key
+    """
+    Fetches the day-ahead electricity prices for Spain using the EntsoePandasClient.
+    This function retrieves the API key from a specified configuration file, initializes the 
+    EntsoePandasClient with the API key, and queries the day-ahead electricity prices for Spain 
+    for the next 24 hours starting from the current time in the 'Europe/Madrid' timezone. The 
+    resulting prices are returned as a pandas DataFrame with timestamps and corresponding prices.
+    Returns:
+        pandas.DataFrame: A DataFrame containing the timestamps and corresponding day-ahead 
+        electricity prices for Spain.
+    Note:
+        Ensure that the API key is correctly placed in the './config/price_api_key.txt' file as 
+        specified in the readme.
+    """
+    price_api_key = get_api_key('./config/price_api_key.txt')  # Please see readme to see how to create your config folder with the API key
 
     # Replace with your API key
-    client = EntsoePandasClient(api_key=apikey)
+    client = EntsoePandasClient(api_key=price_api_key)
 
     # Define the current timestamp (now) and timezone
     start = pd.Timestamp.now(tz='Europe/Madrid')  # Current time in Madrid timezone
@@ -108,6 +150,14 @@ def get_prices():
     return prices_df
 
 def join_data(temp_df, prices_df):
+    """
+    Merge temperature and price dataframes on the 'Timestamp' column and extract temperature and prices as numpy arrays.
+    Parameters:
+    temp_df (pd.DataFrame): DataFrame containing temperature data with a 'Timestamp' column.
+    prices_df (pd.DataFrame): DataFrame containing price data with a 'Timestamp' column.
+    Returns:
+    pd.DataFrame: Merged DataFrame containing both temperature and price data.
+    """
     
     # Merge the dataframes on the 'Timestamp' column
     temp_price_df = pd.merge(temp_df, prices_df, on='Timestamp')
@@ -119,6 +169,15 @@ def join_data(temp_df, prices_df):
     return temp_price_df  # Returning the merged dataframe
 
 def find_optimal_heating_decision(temp_price_df):
+    """
+    Determines the optimal heating decision for a given day based on outdoor temperature and electricity price.
+    Parameters:
+    temp_price_df (pd.DataFrame): A DataFrame containing two columns:
+        - "Temperature (°C)": Outdoor temperature for each hour of the day.
+        - "Price": Electricity price for each hour of the day.
+    Returns:
+    bool: The optimal state of the heater (on/off) for the first hour of the day.
+    """
 
     # Parameters
     time_steps = 24  # 24 hours in a day
@@ -166,7 +225,3 @@ def find_optimal_heating_decision(temp_price_df):
     
     decision = heater_state.value[0]
     return decision
-
-def automation_kasa(decision):
-    status = []
-    return status
