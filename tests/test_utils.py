@@ -1,4 +1,4 @@
-from src.strom import utils
+from strom import utils
 
 def test_get_api_key():
     test_key_path = './tests/test_price_api_key.txt'
