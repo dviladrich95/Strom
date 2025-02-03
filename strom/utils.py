@@ -127,7 +127,7 @@ def get_prices():
     resulting prices are returned as a pandas DataFrame with timestamps and corresponding prices.
     Returns:
         pandas.DataFrame: A DataFrame containing the timestamps and corresponding day-ahead 
-        electricity prices for Spain.
+        electricity prices for Spain, in kWh.
     Note:
         Ensure that the API key is correctly placed in the './config/price_api_key.txt' file as 
         specified in the readme.
@@ -155,6 +155,9 @@ def get_prices():
     # Convert the Series to a DataFrame and reindex to get exactly 24 hours
     prices_df = prices_series.to_frame(name='Price')
     prices_df = prices_df.reindex(timestamp_index, method='nearest').head(24)
+
+    # divide the prices by 1000 to get the price in €/kWh
+    prices_df['Price'] = prices_df['Price'] / 1000
 
     return prices_df
 
@@ -186,7 +189,11 @@ def get_temp_price_df():
     temp_price_df = join_data(temp_df, prices_df)
     return temp_price_df
 
-def find_heating_decision(temp_price_df, type = "optimal"):
+def find_heating_decision(temp_price_df, type = "optimal", decision = 'relaxed',
+                            heat_loss = 0.1,  # Heat loss rate per degree difference per hour
+                            heating_power = 2,  # Heating rate (degrees per hour)
+                            min_temperature = 18,  # Minimum temperature constraint (°C)
+                          ):
     """
     Determines the optimal heating decision for a given day based on outdoor temperature and electricity price.
     Parameters:
@@ -194,7 +201,7 @@ def find_heating_decision(temp_price_df, type = "optimal"):
         - "Temperature (°C)": Outdoor temperature for each hour of the day.
         - "Price": Electricity price for each hour of the day.
     Returns:
-    bool: The optimal state of the heater (on/off) for the first hour of the day.
+    array: The optimal state of the heater (on/off) throughout the day.
     """
 
     # Parameters
@@ -203,26 +210,31 @@ def find_heating_decision(temp_price_df, type = "optimal"):
     # Simulate outdoor temperature (cool at night, warm in the day)
     outdoor_temperature = temp_price_df["Temperature (°C)"]
 
-    # Thermal properties
-    heat_loss = 0.1  # Heat loss rate per degree difference per hour
-    heating_power = 2  # Heating rate (degrees per hour)
-    min_temperature = 18  # Minimum temperature constraint (°C)
-    initial_temperature = 20  # Initial temperature (°C)
+    initial_temperature = min_temperature  # Initial temperature (°C)
 
-    # Decision variables
-    heater_state = cp.Variable(time_steps, boolean=True)
+    # Constraints
+    constraints = []
+
+    if decision == 'relaxed':
+        # Decision variables
+        heater_state = cp.Variable(time_steps)
+
+        # Heater state constraint (continuous between 0 and 1)
+        constraints.append(heater_state >= 0)
+        constraints.append(heater_state <= 1)
+
+    elif decision == 'discrete':
+        # Decision variables
+        heater_state = cp.Variable(time_steps, boolean=True)
+
     indoor_temperature = cp.Variable(time_steps)
 
     # Objective: Minimize monetary cost (optimal) or temperature deviation from 20°C (baseline)
     if type == "optimal":
         cost = cp.sum(cp.multiply(temp_price_df["Price"], heater_state * heating_power))
-        objective = cp.Minimize(cost)
     elif type == "baseline":
-            cost = cp.sum(cp.abs(indoor_temperature - min_temperature))
+        cost = cp.sum(cp.abs(indoor_temperature - min_temperature))
     objective = cp.Minimize(cost)
-
-    # Constraints
-    constraints = []
 
     # Initial temperature constraint
     constraints.append(indoor_temperature[0] == initial_temperature)
@@ -273,10 +285,13 @@ def compare_decision_costs(temp_price_df):
         'Optimal Cost': optimal_cost,
         'Baseline Cost': baseline_cost,
         'Optimal Indoor Temperature': optimal_indoor_temperature,
-        'Baseline Indoor Temperature': baseline_indoor_temperature
+        'Baseline Indoor Temperature': baseline_indoor_temperature,
+        'Price': temp_price_df['Price']
     })
 
     return compare_df
+
+
 
 def plot_costs_and_temps(compare_df):
     """
@@ -285,39 +300,48 @@ def plot_costs_and_temps(compare_df):
         compare_df (pd.DataFrame): DataFrame containing the optimal and baseline costs and temperatures.
     """
 
+    #save the plots in the plots folder
+    os.chdir(find_root_dir())
+
     fig, ax1 = plt.subplots()
 
     color = 'tab:blue'
     ax1.set_xlabel('Time (h)')
     ax1.set_ylabel('Cost (€)', color=color)
-    ax1.plot(compare_df['Optimal Cost'], color=color, linestyle='-')
-    ax1.plot(compare_df['Baseline Cost'], color=color, linestyle='--')
+    ax1.plot(compare_df['Optimal Cost'].cumsum(), color=color, linestyle='-')
+    ax1.plot(compare_df['Baseline Cost'].cumsum(), color=color, linestyle='--')
     ax1.tick_params(axis='y', labelcolor=color)
     ax1.tick_params(axis='x', rotation=45)  # Rotate x-axis tick labels
 
     ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
 
     color = 'tab:red'
-    ax2.set_ylabel('Temperature (°C)', color=color)  # we already handled the x-label with ax1
+    ax2.set_ylabel('Indoor Temperature (°C)', color=color)  # we already handled the x-label with ax1
     ax2.plot(compare_df['Optimal Indoor Temperature'], color=color, linestyle='-')
     ax2.plot(compare_df['Baseline Indoor Temperature'], color=color, linestyle='--')
     ax2.tick_params(axis='y', labelcolor=color)
     ax2.tick_params(axis='x', rotation=45)  # Rotate x-axis tick labels
 
+    # add a third line in yellow with the electricity price
+    ax3 = ax1.twinx()
+    # make the color a pale blue
+    color = 'tab:grey'
+
+    ax3.spines['right'].set_position(('outward', 60))
+    ax3.plot(compare_df['Price'], color=color)
+    ax3.set_ylabel('Price (€/kWh)', color=color)
+    ax3.tick_params(axis='y', labelcolor=color)
+
     fig.tight_layout()  # otherwise the right y-label is slightly clipped
+    fig.subplots_adjust(top=0.85) 
 
     # Add legends
-    ax1.legend(['Optimal Cost', 'Baseline Cost'], loc='upper left')
-    ax2.legend(['Optimal Temperature', 'Baseline Temperature'], loc='upper right')
+    # Add legends outside the plot area
+    ax1.legend(['Optimal Cost', 'Baseline Cost'], loc='upper left', bbox_to_anchor=(0.25, 1.2))
+    ax2.legend(['Optimal Temperature', 'Baseline Temperature'], loc='upper left', bbox_to_anchor=(0.65, 1.2))
+    ax3.legend(['Price'], loc='upper left', bbox_to_anchor=(0.0, 1.2))
 
-    # Add a small subplot with the average temperature difference to the minimum and the average cost difference
-    fig, ax = plt.subplots(1, 2, figsize=(10, 5))
-    ax[0].bar(['Optimal', 'Baseline'], [np.mean(compare_df['Optimal Indoor Temperature'] - 18), np.mean(compare_df['Baseline Indoor Temperature'] - 18)])
-    ax[0].set_ylabel('Average Temperature Difference (°C)')
-    ax[0].set_title('Average Temperature Difference to 18°C')
-
-    ax[1].bar(['Optimal', 'Baseline'], [np.sum(compare_df['Optimal Cost']), np.sum(compare_df['Baseline Cost'])])
-    ax[1].set_ylabel('Total Cost (€)')
-    ax[1].set_title('Total Cost')
+    # Save the plot
+    plt.savefig('./plots/compare_costs_temps.png', bbox_inches='tight')
 
     plt.show()

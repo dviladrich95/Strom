@@ -7,7 +7,7 @@ def test_get_api_key():
 
 def test_get_weather_data():
     df = utils.get_weather_data()
-    assert df.shape[1] == 2
+    assert df.shape[1] == 1
     assert df.shape[0] == 24
     #check that all values are non nan
     assert df['Temperature (°C)'].isnull().sum() == 0
