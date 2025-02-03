@@ -222,6 +222,80 @@ def find_optimal_heating_decision(temp_price_df):
 
     # Solve the problem
     problem.solve()
-    
-    decision = heater_state.value[0]
-    return decision
+    decision = heater_state.value
+    indoor_temp = indoor_temperature.value
+    return decision, indoor_temp
+
+def compare_decision_costs(temp_price_df):
+    """
+    Compares the costs of the optimal and baseline heating decisions for a given day.
+    Parameters:
+    temp_price_df (pd.DataFrame): A DataFrame containing two columns:
+        - "Temperature (°C)": Outdoor temperature for each hour of the day.
+        - "Price": Electricity price for each hour of the day.
+    Returns:
+    tuple: A tuple containing the costs of the optimal and baseline heating decisions.
+    """
+    # Get the optimal heating decision
+    optimal_decision, optimal_indoor_temperature  = find_heating_decision(temp_price_df, type = "optimal")
+    baseline_decision, baseline_indoor_temperature = find_heating_decision(temp_price_df, type = "baseline")
+
+    # Calculate the cost of the optimal decision
+    optimal_cost= temp_price_df["Price"] * optimal_decision
+
+    # Calculate the cost of the baseline decision
+    baseline_cost = temp_price_df["Price"] * baseline_decision
+
+    # merge all the 4 data into one dataframe
+    compare_df = pd.DataFrame({
+        'Optimal Cost': optimal_cost,
+        'Baseline Cost': baseline_cost,
+        'Optimal Indoor Temperature': optimal_indoor_temperature,
+        'Baseline Indoor Temperature': baseline_indoor_temperature
+    })
+
+    return compare_df
+
+def plot_costs_and_temps(compare_df):
+    """
+    Plots the costs of the optimal and baseline decisions and temperatures with two different axes.
+    Args:
+        compare_df (pd.DataFrame): DataFrame containing the optimal and baseline costs and temperatures.
+    """
+
+    fig, ax1 = plt.subplots()
+
+    color = 'tab:blue'
+    ax1.set_xlabel('Time (h)')
+    ax1.set_ylabel('Cost (€)', color=color)
+    ax1.plot(compare_df['Optimal Cost'], color=color, linestyle='-')
+    ax1.plot(compare_df['Baseline Cost'], color=color, linestyle='--')
+    ax1.tick_params(axis='y', labelcolor=color)
+    ax1.tick_params(axis='x', rotation=45)  # Rotate x-axis tick labels
+
+    ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
+
+    color = 'tab:red'
+    ax2.set_ylabel('Temperature (°C)', color=color)  # we already handled the x-label with ax1
+    ax2.plot(compare_df['Optimal Indoor Temperature'], color=color, linestyle='-')
+    ax2.plot(compare_df['Baseline Indoor Temperature'], color=color, linestyle='--')
+    ax2.tick_params(axis='y', labelcolor=color)
+    ax2.tick_params(axis='x', rotation=45)  # Rotate x-axis tick labels
+
+    fig.tight_layout()  # otherwise the right y-label is slightly clipped
+
+    # Add legends
+    ax1.legend(['Optimal Cost', 'Baseline Cost'], loc='upper left')
+    ax2.legend(['Optimal Temperature', 'Baseline Temperature'], loc='upper right')
+
+    # Add a small subplot with the average temperature difference to the minimum and the average cost difference
+    fig, ax = plt.subplots(1, 2, figsize=(10, 5))
+    ax[0].bar(['Optimal', 'Baseline'], [np.mean(compare_df['Optimal Indoor Temperature'] - 18), np.mean(compare_df['Baseline Indoor Temperature'] - 18)])
+    ax[0].set_ylabel('Average Temperature Difference (°C)')
+    ax[0].set_title('Average Temperature Difference to 18°C')
+
+    ax[1].bar(['Optimal', 'Baseline'], [np.sum(compare_df['Optimal Cost']), np.sum(compare_df['Baseline Cost'])])
+    ax[1].set_ylabel('Total Cost (€)')
+    ax[1].set_title('Total Cost')
+
+    plt.show()
