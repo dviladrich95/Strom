@@ -189,7 +189,11 @@ def get_temp_price_df():
     temp_price_df = join_data(temp_df, prices_df)
     return temp_price_df
 
-def find_heating_decision(temp_price_df, type = "optimal"):
+def find_heating_decision(temp_price_df, type = "optimal", decision = 'relaxed',
+                            heat_loss = 0.1,  # Heat loss rate per degree difference per hour
+                            heating_power = 2,  # Heating rate (degrees per hour)
+                            min_temperature = 18,  # Minimum temperature constraint (°C)
+                          ):
     """
     Determines the optimal heating decision for a given day based on outdoor temperature and electricity price.
     Parameters:
@@ -206,10 +210,6 @@ def find_heating_decision(temp_price_df, type = "optimal"):
     # Simulate outdoor temperature (cool at night, warm in the day)
     outdoor_temperature = temp_price_df["Temperature (°C)"]
 
-    # Thermal properties
-    heat_loss = 0.1  # Heat loss rate per degree difference per hour
-    heating_power = 2  # Heating rate (degrees per hour)
-    min_temperature = 18  # Minimum temperature constraint (°C)
     initial_temperature = min_temperature  # Initial temperature (°C)
 
     # Constraints
@@ -316,7 +316,7 @@ def plot_costs_and_temps(compare_df):
     ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
 
     color = 'tab:red'
-    ax2.set_ylabel('Temperature (°C)', color=color)  # we already handled the x-label with ax1
+    ax2.set_ylabel('Indoor Temperature (°C)', color=color)  # we already handled the x-label with ax1
     ax2.plot(compare_df['Optimal Indoor Temperature'], color=color, linestyle='-')
     ax2.plot(compare_df['Baseline Indoor Temperature'], color=color, linestyle='--')
     ax2.tick_params(axis='y', labelcolor=color)
@@ -340,5 +340,8 @@ def plot_costs_and_temps(compare_df):
     ax1.legend(['Optimal Cost', 'Baseline Cost'], loc='upper left', bbox_to_anchor=(0.25, 1.2))
     ax2.legend(['Optimal Temperature', 'Baseline Temperature'], loc='upper left', bbox_to_anchor=(0.65, 1.2))
     ax3.legend(['Price'], loc='upper left', bbox_to_anchor=(0.0, 1.2))
+
+    # Save the plot
+    plt.savefig('./plots/compare_costs_temps.png', bbox_inches='tight')
 
     plt.show()
