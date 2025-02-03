@@ -279,7 +279,8 @@ def compare_decision_costs(temp_price_df):
         'Optimal Cost': optimal_cost,
         'Baseline Cost': baseline_cost,
         'Optimal Indoor Temperature': optimal_indoor_temperature,
-        'Baseline Indoor Temperature': baseline_indoor_temperature
+        'Baseline Indoor Temperature': baseline_indoor_temperature,
+        'Price': temp_price_df['Price']
     })
 
     return compare_df
