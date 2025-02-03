@@ -194,7 +194,7 @@ def find_heating_decision(temp_price_df, type = "optimal"):
         - "Temperature (°C)": Outdoor temperature for each hour of the day.
         - "Price": Electricity price for each hour of the day.
     Returns:
-    bool: The optimal state of the heater (on/off) for the first hour of the day.
+    array: The optimal state of the heater (on/off) throughout the day.
     """
 
     # Parameters
@@ -210,15 +210,14 @@ def find_heating_decision(temp_price_df, type = "optimal"):
     initial_temperature = 20  # Initial temperature (°C)
 
     # Decision variables
-    heater_state = cp.Variable(time_steps, boolean=True)
+    heater_state = cp.Variable(time_steps)
     indoor_temperature = cp.Variable(time_steps)
 
     # Objective: Minimize monetary cost (optimal) or temperature deviation from 20°C (baseline)
     if type == "optimal":
         cost = cp.sum(cp.multiply(temp_price_df["Price"], heater_state * heating_power))
-        objective = cp.Minimize(cost)
     elif type == "baseline":
-            cost = cp.sum(cp.abs(indoor_temperature - min_temperature))
+        cost = cp.sum(cp.abs(indoor_temperature - min_temperature))
     objective = cp.Minimize(cost)
 
     # Constraints
@@ -226,6 +225,10 @@ def find_heating_decision(temp_price_df, type = "optimal"):
 
     # Initial temperature constraint
     constraints.append(indoor_temperature[0] == initial_temperature)
+
+    # Heater state constraint (continuous between 0 and 1)
+    constraints.append(heater_state >= 0)
+    constraints.append(heater_state <= 1)
 
     # Minimum temperature constraint
     constraints += [indoor_temperature >= min_temperature]
