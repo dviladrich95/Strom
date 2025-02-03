@@ -210,10 +210,23 @@ def find_heating_decision(temp_price_df, type = "optimal"):
     heat_loss = 0.1  # Heat loss rate per degree difference per hour
     heating_power = 2  # Heating rate (degrees per hour)
     min_temperature = 18  # Minimum temperature constraint (°C)
-    initial_temperature = 20  # Initial temperature (°C)
+    initial_temperature = min_temperature  # Initial temperature (°C)
 
-    # Decision variables
-    heater_state = cp.Variable(time_steps)
+    # Constraints
+    constraints = []
+
+    if decision == 'relaxed':
+        # Decision variables
+        heater_state = cp.Variable(time_steps)
+
+        # Heater state constraint (continuous between 0 and 1)
+        constraints.append(heater_state >= 0)
+        constraints.append(heater_state <= 1)
+
+    elif decision == 'discrete':
+        # Decision variables
+        heater_state = cp.Variable(time_steps, boolean=True)
+
     indoor_temperature = cp.Variable(time_steps)
 
     # Objective: Minimize monetary cost (optimal) or temperature deviation from 20°C (baseline)
@@ -223,15 +236,8 @@ def find_heating_decision(temp_price_df, type = "optimal"):
         cost = cp.sum(cp.abs(indoor_temperature - min_temperature))
     objective = cp.Minimize(cost)
 
-    # Constraints
-    constraints = []
-
     # Initial temperature constraint
     constraints.append(indoor_temperature[0] == initial_temperature)
-
-    # Heater state constraint (continuous between 0 and 1)
-    constraints.append(heater_state >= 0)
-    constraints.append(heater_state <= 1)
 
     # Minimum temperature constraint
     constraints += [indoor_temperature >= min_temperature]
