@@ -127,7 +127,7 @@ def get_prices():
     resulting prices are returned as a pandas DataFrame with timestamps and corresponding prices.
     Returns:
         pandas.DataFrame: A DataFrame containing the timestamps and corresponding day-ahead 
-        electricity prices for Spain.
+        electricity prices for Spain, in kWh.
     Note:
         Ensure that the API key is correctly placed in the './config/price_api_key.txt' file as 
         specified in the readme.
@@ -155,6 +155,9 @@ def get_prices():
     # Convert the Series to a DataFrame and reindex to get exactly 24 hours
     prices_df = prices_series.to_frame(name='Price')
     prices_df = prices_df.reindex(timestamp_index, method='nearest').head(24)
+
+    # divide the prices by 1000 to get the price in €/kWh
+    prices_df['Price'] = prices_df['Price'] / 1000
 
     return prices_df
 
