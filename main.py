@@ -16,11 +16,9 @@ async def main():
     try:
         # Discover the device
         dev = await Discover.discover_single(device_ip, username=email, password=password)
-        temp_df = utils.get_weather_data()
-        prices_df = utils.get_prices()
-        temp_price_df = utils.join_data(temp_df, prices_df)
+        temp_price_df = utils.get_temp_price_df()
         # Prompt the user for input (0 for off, 1 for on)
-        user_input = bool(utils.find_optimal_heating_decision(temp_price_df))
+        user_input = bool(utils.find_heating_decision(temp_price_df)[0][0])
         # Check user input and turn the light on or off accordingly
         print(user_input)
         if user_input:

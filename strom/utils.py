@@ -109,9 +109,13 @@ def get_weather_data():
     start_time = pd.Timestamp.now(tz='Europe/Madrid').floor('h')
     end_time = start_time + pd.Timedelta(hours=time_steps)
     full_range = pd.date_range(start=start_time + pd.Timedelta(hours=1), end=end_time, freq='h', tz='Europe/Madrid')
-    temp_df = temp_df.set_index('Timestamp').reindex(full_range).interpolate().reset_index()
-    temp_df.columns = ['Timestamp', 'Temperature (°C)']  # Rename columns
+    temp_df = temp_df.set_index('Timestamp').reindex(full_range).interpolate()
+    temp_df.columns = ['Temperature (°C)']  # Rename columns
 
+    # if there are nan values, fill them with the previous value
+    if temp_df.isnull().values.any():
+        print(f"Warning: There are NaN values in the DataFrame, filling in {temp_df.isnull().sum()} NaN values.")
+        temp_df.fillna(method='bfill', inplace=True)
     return temp_df
 
 def get_prices():
@@ -137,15 +141,20 @@ def get_prices():
     start = pd.Timestamp.now(tz='Europe/Madrid')  # Current time in Madrid timezone
     end = start + pd.Timedelta(hours=24)  # 24 hours after the current time
 
+    #make a dataframe with one column for the timestamp and one for the price
+    timestamp_index = pd.date_range(start=start, end=end, freq='h', tz='Europe/Madrid')
+
+
+
     # Country code for Spain
     country_code = 'ES'  # Spain
 
     # Querying the day-ahead prices for Spain
     prices_series = client.query_day_ahead_prices(country_code, start=start, end=end)
 
-    # Convert the Series to a DataFrame and rename columns
-    prices_df = prices_series.to_frame(name='Price').reset_index()
-    prices_df.rename(columns={'index': 'Timestamp'}, inplace=True)
+    # Convert the Series to a DataFrame and reindex to get exactly 24 hours
+    prices_df = prices_series.to_frame(name='Price')
+    prices_df = prices_df.reindex(timestamp_index, method='nearest').head(24)
 
     return prices_df
 
@@ -159,16 +168,25 @@ def join_data(temp_df, prices_df):
     pd.DataFrame: Merged DataFrame containing both temperature and price data.
     """
     
-    # Merge the dataframes on the 'Timestamp' column
-    temp_price_df = pd.merge(temp_df, prices_df, on='Timestamp')
+    # Reindex temp_df to match the timestamps of prices_df
+    temp_df_reindexed = temp_df.reindex(prices_df.index.union(temp_df.index)).interpolate(method='time')
 
-    # Extract the temperature and prices as numpy arrays
-    temperature = temp_price_df['Temperature (°C)'].values
-    prices = temp_price_df['Price'].values
+    # Fill any remaining NaN values after interpolation
+    temp_df_reindexed = temp_df_reindexed.fillna(method='bfill').fillna(method='ffill')
+
+    # Reindex again to match exactly the prices_df index
+    temp_df_reindexed = temp_df_reindexed.reindex(prices_df.index)
+    temp_price_df = pd.merge(temp_df_reindexed, prices_df, left_index=True, right_index=True, how='inner')
 
     return temp_price_df  # Returning the merged dataframe
 
-def find_optimal_heating_decision(temp_price_df):
+def get_temp_price_df():
+    temp_df = get_weather_data()
+    prices_df = get_prices()
+    temp_price_df = join_data(temp_df, prices_df)
+    return temp_price_df
+
+def find_heating_decision(temp_price_df, type = "optimal"):
     """
     Determines the optimal heating decision for a given day based on outdoor temperature and electricity price.
     Parameters:
@@ -195,8 +213,12 @@ def find_optimal_heating_decision(temp_price_df):
     heater_state = cp.Variable(time_steps, boolean=True)
     indoor_temperature = cp.Variable(time_steps)
 
-    # Objective: Minimize cost
-    cost = cp.sum(cp.multiply(temp_price_df["Price"], heater_state * heating_power))
+    # Objective: Minimize monetary cost (optimal) or temperature deviation from 20°C (baseline)
+    if type == "optimal":
+        cost = cp.sum(cp.multiply(temp_price_df["Price"], heater_state * heating_power))
+        objective = cp.Minimize(cost)
+    elif type == "baseline":
+            cost = cp.sum(cp.abs(indoor_temperature - min_temperature))
     objective = cp.Minimize(cost)
 
     # Constraints
@@ -222,6 +244,80 @@ def find_optimal_heating_decision(temp_price_df):
 
     # Solve the problem
     problem.solve()
-    
-    decision = heater_state.value[0]
-    return decision
+    decision = heater_state.value
+    indoor_temp = indoor_temperature.value
+    return decision, indoor_temp
+
+def compare_decision_costs(temp_price_df):
+    """
+    Compares the costs of the optimal and baseline heating decisions for a given day.
+    Parameters:
+    temp_price_df (pd.DataFrame): A DataFrame containing two columns:
+        - "Temperature (°C)": Outdoor temperature for each hour of the day.
+        - "Price": Electricity price for each hour of the day.
+    Returns:
+    tuple: A tuple containing the costs of the optimal and baseline heating decisions.
+    """
+    # Get the optimal heating decision
+    optimal_decision, optimal_indoor_temperature  = find_heating_decision(temp_price_df, type = "optimal")
+    baseline_decision, baseline_indoor_temperature = find_heating_decision(temp_price_df, type = "baseline")
+
+    # Calculate the cost of the optimal decision
+    optimal_cost= temp_price_df["Price"] * optimal_decision
+
+    # Calculate the cost of the baseline decision
+    baseline_cost = temp_price_df["Price"] * baseline_decision
+
+    # merge all the 4 data into one dataframe
+    compare_df = pd.DataFrame({
+        'Optimal Cost': optimal_cost,
+        'Baseline Cost': baseline_cost,
+        'Optimal Indoor Temperature': optimal_indoor_temperature,
+        'Baseline Indoor Temperature': baseline_indoor_temperature
+    })
+
+    return compare_df
+
+def plot_costs_and_temps(compare_df):
+    """
+    Plots the costs of the optimal and baseline decisions and temperatures with two different axes.
+    Args:
+        compare_df (pd.DataFrame): DataFrame containing the optimal and baseline costs and temperatures.
+    """
+
+    fig, ax1 = plt.subplots()
+
+    color = 'tab:blue'
+    ax1.set_xlabel('Time (h)')
+    ax1.set_ylabel('Cost (€)', color=color)
+    ax1.plot(compare_df['Optimal Cost'], color=color, linestyle='-')
+    ax1.plot(compare_df['Baseline Cost'], color=color, linestyle='--')
+    ax1.tick_params(axis='y', labelcolor=color)
+    ax1.tick_params(axis='x', rotation=45)  # Rotate x-axis tick labels
+
+    ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
+
+    color = 'tab:red'
+    ax2.set_ylabel('Temperature (°C)', color=color)  # we already handled the x-label with ax1
+    ax2.plot(compare_df['Optimal Indoor Temperature'], color=color, linestyle='-')
+    ax2.plot(compare_df['Baseline Indoor Temperature'], color=color, linestyle='--')
+    ax2.tick_params(axis='y', labelcolor=color)
+    ax2.tick_params(axis='x', rotation=45)  # Rotate x-axis tick labels
+
+    fig.tight_layout()  # otherwise the right y-label is slightly clipped
+
+    # Add legends
+    ax1.legend(['Optimal Cost', 'Baseline Cost'], loc='upper left')
+    ax2.legend(['Optimal Temperature', 'Baseline Temperature'], loc='upper right')
+
+    # Add a small subplot with the average temperature difference to the minimum and the average cost difference
+    fig, ax = plt.subplots(1, 2, figsize=(10, 5))
+    ax[0].bar(['Optimal', 'Baseline'], [np.mean(compare_df['Optimal Indoor Temperature'] - 18), np.mean(compare_df['Baseline Indoor Temperature'] - 18)])
+    ax[0].set_ylabel('Average Temperature Difference (°C)')
+    ax[0].set_title('Average Temperature Difference to 18°C')
+
+    ax[1].bar(['Optimal', 'Baseline'], [np.sum(compare_df['Optimal Cost']), np.sum(compare_df['Baseline Cost'])])
+    ax[1].set_ylabel('Total Cost (€)')
+    ax[1].set_title('Total Cost')
+
+    plt.show()
