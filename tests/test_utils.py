@@ -9,6 +9,8 @@ def test_get_weather_data():
     df = utils.get_weather_data()
     assert df.shape[1] == 2
     assert df.shape[0] == 24
+    #check that all values are non nan
+    assert df['Temperature (°C)'].isnull().sum() == 0
 
 def test_get_prices():
     prices_df = utils.get_prices()
@@ -23,7 +25,17 @@ def test_join_data():
 
     df = utils.join_data(weather_df, prices_df)
     assert df.shape[0] == 24
-    assert df.shape[1] == 3
+    assert df.shape[1] == 2
     assert 'Temperature (°C)' in df.columns
     assert 'Price' in df.columns
-    assert 'Timestamp' in df.columns
+
+def test_get_temp_price_df():
+    temp_price_df = utils.get_temp_price_df()
+    assert temp_price_df.shape[0] == 24
+    assert temp_price_df.shape[1] == 2
+    assert 'Temperature (°C)' in temp_price_df.columns
+    assert 'Price' in temp_price_df.columns
+
+def test_compare_decision_costs():
+    temp_price_df = utils.get_temp_price_df()
+    utils.compare_decision_costs(temp_price_df)
