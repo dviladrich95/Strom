@@ -27,6 +27,9 @@ One of the possible interactions is to trigger a smart plug to turn off in perio
 6. Place your tapo account credentials in a "tapologin.env" file in the _config_ folder.
 
 ## Usage
+
+[Technical documentation](documentation.md)
+
 To run the main script manually:
 ```sh
 python main.py  # python3 main.py for Mac users
@@ -37,3 +40,4 @@ Alternatively create a cron job or similar, that activates the main script hourl
 
 ## Future Considerations
 - Cron job installer
+
