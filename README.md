@@ -35,9 +35,9 @@ To run the main script manually:
 python main.py  # python3 main.py for Mac users
 ```
 
-Alternatively create a cron job or similar, that activates the main script hourly.
+Alternatively create [a cron job](https://www.freecodecamp.org/news/cron-jobs-in-linux/) or similar, that activates the main script hourly.
 
 
 ## Future Considerations
 - Cron job installer
-
+- Standalone executable
