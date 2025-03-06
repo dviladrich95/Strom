@@ -1,8 +1,9 @@
 # Strom Project
 
 ## Overview
-The goal of this project is to analyze and interact with API data about energy and energy prices.
-One of the possible interactions is to trigger a smart plug to turn off in periods with high energy demand/prices.
+Strom is a free, open-source script that brings smart heating to your home. It uses weather forecasts and electricity price data to fine-tune energy use, finding a cost-effective heating schedule through convex optimization. With a smart plug, Strom quietly takes care of the details, automatically adjusting your heating to save energy. It’s a simple, clever way to make your home more efficient and eco-friendly.
+
+[Read the docs here](https://janbalanya.com/strom-docs/)
 
 ## Installation
 1. Clone the repository:
@@ -28,7 +29,7 @@ One of the possible interactions is to trigger a smart plug to turn off in perio
 
 ## Usage
 
-[Technical documentation](documentation.md)
+[Technical documentation](https://janbalanya.com/strom-docs/)
 
 To run the main script manually:
 ```sh
