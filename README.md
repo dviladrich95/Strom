@@ -5,6 +5,9 @@ Strom is a free, open-source script that brings smart heating to your home. It u
 
 [Read the docs here](https://janbalanya.com/strom-docs/)
 
+## Requirements
+Requires Python version 3.12.8
+
 ## Installation
 1. Clone the repository:
     ```sh
