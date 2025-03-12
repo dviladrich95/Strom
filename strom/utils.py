@@ -54,7 +54,7 @@ def get_weather_data():
     """
     Fetches weather data for Barcelona from the OpenWeatherMap API, processes it, and returns a DataFrame with hourly temperature data.
     The function performs the following steps:
-    1. Reads the OpenWeatherMap API key from a configuration file.
+    1. Reads the OpenWeatherMap API key from an environment variable or a configuration file.
     2. Makes an API call to fetch the weather forecast data for Barcelona.
     3. Parses the JSON response to extract timestamps and temperatures.
     4. Converts the timestamps to the 'Europe/Madrid' timezone.
@@ -68,10 +68,12 @@ def get_weather_data():
     """
     time_steps = 24  # 24 hours in a day
 
-    # open weather map API key text file
-    os.chdir(find_root_dir())
-    with open('./config/weather_api_key.txt') as f:
-        API_KEY = f.read().strip()
+    # Get the API key from environment variable or config file
+    API_KEY = os.getenv('WEATHER_API_KEY')
+    if not API_KEY:
+        os.chdir(find_root_dir())
+        with open('./config/weather_api_key.txt') as f:
+            API_KEY = f.read().strip()
 
     call_str = "https://api.openweathermap.org/data/2.5/forecast?q=Barcelona&appid=" + API_KEY
 
@@ -121,7 +123,7 @@ def get_weather_data():
 def get_prices():
     """
     Fetches the day-ahead electricity prices for Spain using the EntsoePandasClient.
-    This function retrieves the API key from a specified configuration file, initializes the 
+    This function retrieves the API key from an environment variable or a specified configuration file, initializes the 
     EntsoePandasClient with the API key, and queries the day-ahead electricity prices for Spain 
     for the next 24 hours starting from the current time in the 'Europe/Madrid' timezone. The 
     resulting prices are returned as a pandas DataFrame with timestamps and corresponding prices.
@@ -132,7 +134,10 @@ def get_prices():
         Ensure that the API key is correctly placed in the './config/price_api_key.txt' file as 
         specified in the readme.
     """
-    price_api_key = get_api_key('./config/price_api_key.txt')  # Please see readme to see how to create your config folder with the API key
+    # Get the API key from environment variable or config file
+    price_api_key = os.getenv('PRICE_API_KEY')
+    if not price_api_key:
+        price_api_key = get_api_key('./config/price_api_key.txt')  # Please see readme to see how to create your config folder with the API key
 
     # Replace with your API key
     client = EntsoePandasClient(api_key=price_api_key)
@@ -143,8 +148,6 @@ def get_prices():
 
     #make a dataframe with one column for the timestamp and one for the price
     timestamp_index = pd.date_range(start=start, end=end, freq='h', tz='Europe/Madrid')
-
-
 
     # Country code for Spain
     country_code = 'ES'  # Spain

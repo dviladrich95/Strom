@@ -7,9 +7,13 @@ from strom import utils
 # Load the environment variables from the .env file
 load_dotenv(dotenv_path="../../config/tapologin.env")
 
-device_ip = "192.168.1.16"
 email = os.getenv("EMAIL")  # Get email from the environment variable
 password = os.getenv("PASSWORD")  # Get password from the environment variable
+device_ip = os.getenv("DEVICEIP")
+if not device_ip:
+    os.chdir(utils.find_root_dir())
+    with open('./config/device_IP.txt') as f:
+        device_ip = f.read().strip()
 
 async def main():
     try:
