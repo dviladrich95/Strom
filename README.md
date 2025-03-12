@@ -10,15 +10,15 @@ Strom is a free, open-source script that brings smart heating to your home. It u
 
 ## Requirements
 
-Requires Python version **3.12.8**
+Requires **Python 3.12.8**
 
 ## Installation
 
 1. Clone the repository:
 
     ```sh
-    git clone <repository-url>
-    cd <repository-directory>
+    git clone https://github.com/Bloodwing1/Strom.git
+    cd Strom
     ```
 
 2. Create a virtual environment and activate it:
@@ -36,7 +36,12 @@ Requires Python version **3.12.8**
 
 4. Create a _config_ folder in the root project directory. This folder is your personal api keys will be saved
 5. Place your electricity price and weather API keys in a "price_api_key.txt" "weather_api_Key.txt" file that you create in the _config_ folder.
-6. Place your tapo account credentials in a "tapologin.env" file in the _config_ folder.
+6. Place your tapo account credentials in a "tapologin.env" file in the _config_ folder. The content of this .env file should look like this:
+
+    ```env
+    EMAIL=myemail@hotmail.com
+    PASSWORD=myPassword12
+    ```
 
 ## Usage
 
