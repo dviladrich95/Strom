@@ -1,5 +1,5 @@
 from strom import optimization_utils
-from strom.api_utils import get_api_key, get_weather_data, get_prices
+from strom.api_utils import read_api_key as get_api_key, get_weather_data, get_prices
 from strom.data_utils import get_temp_price_df, join_data
 
 
@@ -9,18 +9,27 @@ def test_get_api_key():
     assert api_key == 'test123'
 
 def test_get_weather_data():
-    df = get_weather_data()
+    df = get_weather_data(city="Oslo")
     assert df.shape[1] == 1
     assert df.shape[0] == 24
     #check that all values are non nan
     assert df['Temperature (°C)'].isnull().sum() == 0
+
+def test_get_weather_data_different_cities():
+    oslo_df = get_weather_data(city="Oslo")
+    bergen_df = get_weather_data(city="Bergen")
+    
+    assert oslo_df.shape == bergen_df.shape
+    assert not oslo_df['Temperature (°C)'].equals(bergen_df['Temperature (°C)'])
+    assert oslo_df.shape[0] == 24
+    assert oslo_df.shape[1] == 1
 
 def test_get_prices():
     prices_df = get_prices()
     assert prices_df.shape[0] == 24
 
 def test_join_data():
-    weather_df = get_weather_data()
+    weather_df = get_weather_data(city="Oslo")
     prices_df = get_prices()
 
     assert weather_df.shape[0] == 24

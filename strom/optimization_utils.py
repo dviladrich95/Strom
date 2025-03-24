@@ -7,7 +7,12 @@ import os
 import xml.etree.ElementTree as ET
 from entsoe import EntsoePandasClient
 
-from .api_utils import find_root_dir, get_api_key, get_weather_data, get_prices
+from .api_utils import (
+    find_root_dir, 
+    read_api_key as get_api_key,  # Use the new name but import as old name
+    get_weather_data, 
+    get_prices
+)
 from .data_utils import get_temp_price_df
 
 def join_data(temp_df, prices_df):
