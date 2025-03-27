@@ -358,10 +358,10 @@ def plot_state(state_df, case_label, plot_price=True):
         ax4.tick_params(axis='y', labelcolor=color)
 
     fig.tight_layout()  # otherwise the right y-label is slightly clipped
-    return fig, ax1, ax2, ax3
+    return fig 
 
 
-def plot_combined_cases(fig1, fig2, state_df1, state_df2):
+def plot_combined_cases(fig1, fig2):
     """
     Combines the plots for both Baseline and Optimal cases into a single plot using the generic plot output.
     Args:
