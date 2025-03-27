@@ -5,7 +5,19 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 temp_price_df = get_temp_price_df()
-house = House(freq='min')
+
+house = House(
+    C_air = 0.56,
+    C_walls = 3.5,
+    R_internal = 1,
+    R_external = 6.06,
+    Q_heater = 2,
+    min_temperature = 18,
+    max_temperature = 24,
+    init_indoor_temp = 18.5,
+    init_wall_temp = 20,
+    freq = 'h')
+
 optimal_state_df, baseline_state_df = compare_decision_costs(temp_price_df,house)
 
 fig_base = plot_state(baseline_state_df, 'Baseline')
