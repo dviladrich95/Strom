@@ -243,11 +243,9 @@ def find_heating_decision(temp_price_df, house, heating_mode):
     
     # Objective function
     if heating_mode == "optimal":
-        obj = cp.sum(cp.multiply(state_df["Price"], heater_state * house.Q_heater))
+        obj = cp.sum(cp.multiply(state_df["Price"], heater_state * house.Q_heater)) + 0.1*cp.norm(cp.diff(indoor_temperature), 1)
     elif heating_mode == "baseline":
-        #cost = cp.sum((cp.abs(min_temperature-indoor_temperature) + (min_temperature-indoor_temperature)) / 2)
         obj = cp.sum(cp.maximum(house.min_temperature-indoor_temperature, 0))
-        #cost = cp.sum((cp.abs(min_temperature-indoor_temperature) + (min_temperature-indoor_temperature)) / 2)
     objective = cp.Minimize(obj)
     
     # Solve optimization
