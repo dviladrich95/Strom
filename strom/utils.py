@@ -278,7 +278,7 @@ def compare_decision_costs(temp_price_df,house):
     """
 
     optimal_state_df  = find_heating_decision(temp_price_df, house, "optimal")
-
+    #baseline_state_df = find_heating_decision(temp_price_df, house, "hybrid")
     baseline_state_df = find_heating_decision(temp_price_df, house, "baseline")
 
     return optimal_state_df, baseline_state_df
@@ -402,10 +402,10 @@ def plot_combined_cases(state_opt_df,state_base_df):
 
     # Add legends
     # Add legends outside the plot area
-    ax1.legend(['Optimal Cost', 'Baseline Cost'], loc='upper left', bbox_to_anchor=(0.25, 1.2))
-    ax2.legend(['Optimal Temperature', 'Baseline Temperature'], loc='upper left', bbox_to_anchor=(0.75, 1.2))
+    ax1.legend(['Optimal Cost', 'Baseline Cost'], loc='upper left', bbox_to_anchor=(-0.2, 1.2))
+    ax2.legend(['Optimal Temperature', 'Baseline Temperature'], loc='upper left', bbox_to_anchor=(0.35, 1.2))
     ax3.legend(['Optimal Heater State', 'Baseline Heater State'], loc='upper left', bbox_to_anchor=(0.5, 1.2))
-    ax4.legend(['Price'], loc='upper left', bbox_to_anchor=(0.0, 1.2))
+    ax4.legend(['Price'], loc='upper left', bbox_to_anchor=(0.75, 1.2))
 
     fig.tight_layout()  # otherwise the right y-label is slightly clipped
 
