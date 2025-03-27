@@ -205,7 +205,7 @@ def find_heating_decision(temp_price_df, house, heating_mode):
     """
     state_df = temp_price_df.copy()  # Make a copy of the dataframe
     if house.freq == 'min':
-        state_df.resample('min').interpolate(method='cubic')
+        state_df = state_df.resample('min').interpolate(method='cubic')
         dt = 1.0/60
     elif house.freq == 'h':
         dt = 1.0
@@ -360,35 +360,56 @@ def plot_state(state_df, case_label, plot_price=True):
     fig.tight_layout()  # otherwise the right y-label is slightly clipped
     return fig 
 
+def plot_combined_cases(state_opt_df,state_base_df):
+    #save the plots in the plots folder
+    os.chdir(find_root_dir())
 
-def plot_combined_cases(fig1, fig2):
-    """
-    Combines the plots for both Baseline and Optimal cases into a single plot using the generic plot output.
-    Args:
-        fig1: Matplotlib figure object for the first case (e.g., Baseline).
-        fig2: Matplotlib figure object for the second case (e.g., Optimal).
-    Returns:
-        fig: Matplotlib figure object with combined plots.
-    """
-    # Create a new figure
     fig, ax1 = plt.subplots()
 
-    # Extract data from fig1 and fig2
-    for ax in fig1.axes:
-        for line in ax.get_lines():
-            ax1.plot(line.get_xdata(), line.get_ydata(), label=line.get_label(), linestyle='-')
-
-    for ax in fig2.axes:
-        for line in ax.get_lines():
-            ax1.plot(line.get_xdata(), line.get_ydata(), label=line.get_label(), linestyle='--')
-
-    # Add legend
-    ax1.legend()
-
-    # Set labels and title
+    color = 'tab:blue'
     ax1.set_xlabel('Time (h)')
-    ax1.set_ylabel('Values')
-    ax1.set_title('Combined Baseline and Optimal Cases')
+    ax1.set_ylabel('Cost (€)', color=color)
+    ax1.plot(state_opt_df['Cost'].cumsum(), color=color, linestyle='-')
+    ax1.plot(state_base_df['Cost'].cumsum(), color=color, linestyle='--')
+    ax1.tick_params(axis='y', labelcolor=color)
+    ax1.tick_params(axis='x', rotation=45)  # Rotate x-axis tick labels
+
+    ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
+
+    color = 'tab:red'
+    ax2.set_ylabel('Indoor Temperature (°C)', color=color)  # we already handled the x-label with ax1
+    ax2.plot(state_opt_df['Indoor Temperature'], color=color, linestyle='-')
+    ax2.plot(state_base_df['Indoor Temperature'], color=color, linestyle='--')
+    ax2.tick_params(axis='y', labelcolor=color)
+    ax2.tick_params(axis='x', rotation=45)  # Rotate x-axis tick labels
+
+
+    ax3 = ax1.twinx()
+    color = 'tab:green'
+    ax3.spines['right'].set_position(('outward', 60))
+    ax3.plot(state_opt_df['Decision'], color=color, linestyle='-')
+    ax3.plot(state_base_df['Decision'], color=color, linestyle='--')
+    ax3.set_ylabel('Heater State', color=color)
+    ax3.tick_params(axis='y', labelcolor=color)
+
+    # add a third line in yellow with the electricity price
+    ax4 = ax1.twinx()
+    # make the color a pale blue
+    color = 'tab:grey'
+
+    ax4.spines['right'].set_position(('outward', 120))
+    ax4.plot(state_opt_df['Price'], color=color)
+    ax4.set_ylabel('Price (€/kWh)', color=color)
+    ax4.tick_params(axis='y', labelcolor=color)
+
+    # Add legends
+    # Add legends outside the plot area
+    ax1.legend(['Optimal Cost', 'Baseline Cost'], loc='upper left', bbox_to_anchor=(0.25, 1.2))
+    ax2.legend(['Optimal Temperature', 'Baseline Temperature'], loc='upper left', bbox_to_anchor=(0.75, 1.2))
+    ax3.legend(['Optimal Heater State', 'Baseline Heater State'], loc='upper left', bbox_to_anchor=(0.5, 1.2))
+    ax4.legend(['Price'], loc='upper left', bbox_to_anchor=(0.0, 1.2))
+
+    fig.tight_layout()  # otherwise the right y-label is slightly clipped
 
     return fig
 
