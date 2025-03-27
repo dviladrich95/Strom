@@ -120,7 +120,7 @@ def get_temp_series():
 
     return temp_series
 
-def get_price_series():
+def get_price_series(tolls_and_charges=0.1): #tolls and charges as an approximate constant minimum price, in €/kWh
 
 
     price_api_key = get_api_key('./config/price_api_key.txt')  # Please see readme to see how to create your config folder with the API key
@@ -142,7 +142,7 @@ def get_price_series():
     price_series.name = 'Price'
 
     # divide the prices by 1000 to convert the price from (€/MWh) to (€/kWh)
-    price_series = price_series / 1000.0
+    price_series = price_series / 1000.0 + tolls_and_charges
 
     return price_series
 
