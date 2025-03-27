@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import cvxpy as cp
 import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 
 import requests
 from datetime import datetime
@@ -173,136 +174,142 @@ def get_temp_price_df():
     temp_price_df = join_data(temp_df, prices_df)
     return temp_price_df
 
-def find_heating_decision(temp_price_df, type="optimal", decision='relaxed',
-                          C_air=120000, C_walls=750000,
-                          R_internal=0.01, R_external=0.05,
-                          Q_heater=2000, freq='h',
-                          min_temperature=18, max_temperature=24):
+# parameters estimated from https://protonsforbreakfast.wordpress.com/2022/12/19/estimating-the-heat-capacity-of-my-house/
+# C_ air = 0.15*C_walls
+
+
+# define an object heating_parameters
+
+class House:
+    def __init__(self, C_air=0.56, C_walls=3.5, R_internal=1.0,
+                R_external=6.06, Q_heater=2.0, min_temperature=18.0, 
+                max_temperature=24.0, init_indoor_temp = 18.5,
+                init_wall_temp = 20.0, freq='h'):
+        
+        self.C_air = C_air
+        self.C_walls = C_walls
+        self.R_internal = R_internal
+        self.R_external= R_external
+        self.Q_heater=Q_heater
+        self.freq=freq
+        self.min_temperature=min_temperature
+        self.max_temperature=max_temperature
+        self.init_indoor_temp = init_indoor_temp
+        self.init_wall_temp = init_wall_temp
+
+
+def find_heating_decision(temp_price_df, house, heating_mode):
     """
     Determines the optimal heating decision for a given day based on outdoor temperature and electricity price,
     using explicit Euler integration for thermal dynamics.
     """
     state_df = temp_price_df.copy()  # Make a copy of the dataframe
-    if freq == 'min':
+    if house.freq == 'min':
         state_df.resample('min').interpolate(method='cubic')
-        dt = 60
-    elif freq == 'h':
-        dt = 3600
+        dt = 1.0/60
+    elif house.freq == 'h':
+        dt = 1.0
 
     time_steps = len(state_df)
     outdoor_temperature = state_df["Temperature"]
     
-    # Decision variables
-    if decision == 'relaxed':
-        heater_state = cp.Variable(time_steps)
-        constraints = [heater_state >= 0, heater_state <= 1]
-    elif decision == 'discrete':
-        heater_state = cp.Variable(time_steps, boolean=True)
-        constraints = []
+
+    heater_state = cp.Variable(time_steps)
+    constraints = [heater_state >= 0, heater_state <= 1]
     
     # Temperature variables
     indoor_temperature = cp.Variable(time_steps)
     wall_temperature = cp.Variable(time_steps)
     
     # Initial conditions assuming slightly warmer start
-    constraints.append(indoor_temperature[0] == min_temperature + 0.5)  
-    constraints.append(wall_temperature[0] == min_temperature + 0.5)
+    constraints.append(indoor_temperature[0] == house.init_indoor_temp)  
+    constraints.append(wall_temperature[0] == house.init_wall_temp)
     
     # Thermal dynamics constraints
     for t in range(time_steps - 1):
-        heat_loss_air = (indoor_temperature[t] - wall_temperature[t]) / R_internal
-        heat_loss_wall = (wall_temperature[t] - outdoor_temperature.iloc[t]) / R_external
+        heat_loss_air = (indoor_temperature[t] - wall_temperature[t]) / house.R_internal
+        heat_loss_wall = (wall_temperature[t] - outdoor_temperature.iloc[t]) / house.R_external
         
         constraints.append(
-            indoor_temperature[t + 1] == indoor_temperature[t] + dt * (Q_heater * heater_state[t] - heat_loss_air) / C_air
+            indoor_temperature[t + 1] == indoor_temperature[t] + dt * (house.Q_heater * heater_state[t] - heat_loss_air) / house.C_air
         )
         constraints.append(
-            wall_temperature[t + 1] == wall_temperature[t] + dt * (heat_loss_air - heat_loss_wall) / C_walls
+            wall_temperature[t + 1] == wall_temperature[t] + dt * (heat_loss_air - heat_loss_wall) / house.C_walls
         )
     
     # Minimum and maximum temperature constraint
-    constraints.append(indoor_temperature >= min_temperature)
-    constraints.append(indoor_temperature <= max_temperature)
+    constraints.append(indoor_temperature >= house.min_temperature)
+    constraints.append(indoor_temperature <= house.max_temperature)
     
     # Objective function
-    if type == "optimal":
-        cost = cp.sum(cp.multiply(state_df["Price"], heater_state * Q_heater*3600/1000))
-    elif type == "baseline":
+    if heating_mode == "optimal":
+        obj = cp.sum(cp.multiply(state_df["Price"], heater_state * house.Q_heater))
+    elif heating_mode == "baseline":
         #cost = cp.sum((cp.abs(min_temperature-indoor_temperature) + (min_temperature-indoor_temperature)) / 2)
-        cost = cp.sum(cp.maximum(min_temperature-indoor_temperature, 0))
+        obj = cp.sum(cp.maximum(house.min_temperature-indoor_temperature, 0))
         #cost = cp.sum((cp.abs(min_temperature-indoor_temperature) + (min_temperature-indoor_temperature)) / 2)
-    objective = cp.Minimize(cost)
+    objective = cp.Minimize(obj)
     
     # Solve optimization
     problem = cp.Problem(objective, constraints)
     problem.solve()
 
     #check that an optimal solution was found
-    if problem.status != cp.OPTIMAL:
-        raise Exception("No optimal solution found with parameters: C_air={}, C_walls={}, R_internal={}, R_external={}, Q_heater={}, dt={}, min_temperature={}.".format(C_air, C_walls, R_internal, R_external, Q_heater, dt, min_temperature))
+    if problem.status == cp.OPTIMAL:
+        #add the decision to the dataframe
+        state_df['Decision'] = heater_state.value
+        state_df['Indoor Temperature'] = indoor_temperature.value
+        state_df['Cost'] = state_df['Price'] * state_df['Decision']
+    else:
+        print("No optimal solution found with parameters: C_air={}, C_walls={}, R_internal={}, R_external={}, Q_heater={}, dt={}, min_temperature={}."
+                        .format(house.C_air, house.C_walls, house.R_internal, house.R_external, house.Q_heater, dt, house.min_temperature))
+        # fill with NaN arrays
+        state_df['Decision'] = np.full(time_steps, np.nan)
+        state_df['Indoor Temperature'] = np.full(time_steps, np.nan)
+        state_df['Cost'] = np.full(time_steps, np.nan)
 
-    #add the decision to the dataframe
-    state_df['Decision'] = heater_state.value
-    state_df['Indoor Temperature'] = indoor_temperature.value
-    state_df['Cost'] = state_df['Price'] * state_df['Decision']
+
     
     return state_df
 
 
-def compare_decision_costs(temp_price_df,
-                            C_air=120000, C_walls=750000,
-                            R_internal=0.01, R_external=0.05,
-                            Q_heater=2000, freq='h',
-                            min_temperature=18):
+def compare_decision_costs(temp_price_df,house):
         
     """
     units will use kW and kWh
     """
 
-    # Get the optimal heating decision
-    optimal_state_df  = find_heating_decision(temp_price_df, type="optimal",
-                                                                            C_air=C_air, C_walls=C_walls,
-                                                                            R_internal=R_internal, R_external=R_external,
-                                                                            Q_heater=Q_heater, freq=freq,
-                                                                            min_temperature=min_temperature)
-    
-    baseline_state_df = find_heating_decision(temp_price_df, type="baseline",
-                                                                            C_air=C_air, C_walls=C_walls,
-                                                                            R_internal=R_internal, R_external=R_external,
-                                                                            Q_heater=Q_heater, freq=freq,
-                                                                            min_temperature=min_temperature)
+    optimal_state_df  = find_heating_decision(temp_price_df, house, "optimal")
+
+    baseline_state_df = find_heating_decision(temp_price_df, house, "baseline")
 
     return optimal_state_df, baseline_state_df
 
-def get_state_df(temp_price_df, decision,
-                            C_air=120000, C_walls=750000,
-                            R_internal=0.01, R_external=0.05,
-                            Q_heater=2000,  freq='h',
-                            min_temperature=18):
+def get_state_df(temp_price_df, decision, house):
     
     # time steps is the length of the time index resulting from starting at the first time and going to the last time in steps of dt
     state_df = temp_price_df.copy()  # Make a copy of the dataframe
     state_df['Decision'] = decision
-    if freq == 'min':
+    if house.freq == 'min':
         state_df = state_df.resample('min').interpolate(method='cubic')
-        dt = 60
-    elif freq == 'h':
-        dt = 3600
+        dt = 1.0/60
+    elif house.freq == 'h':
+        dt = 1.0
     
     time_steps = len(state_df)
 
     indoor_temperature = np.zeros(time_steps)
     wall_temperature = np.zeros(time_steps)
 
-    indoor_temperature[0] = min_temperature + 0.5
-    wall_temperature[0] = min_temperature + 0.5
+    indoor_temperature[0] = house.init_indoor_temp
+    wall_temperature[0] = house.init_wall_temp
 
     for t in range(time_steps - 1):
-        heat_loss_air = (indoor_temperature[t] - wall_temperature[t]) / R_internal
-        heat_loss_wall = (wall_temperature[t] - state_df['Temperature'][t]) / R_external
+        heat_loss_air = (indoor_temperature[t] - wall_temperature[t]) / house.R_internal
+        heat_loss_wall = (wall_temperature[t] - state_df['Temperature'][t]) / house.R_external
         
-        indoor_temperature[t + 1] = indoor_temperature[t] + dt * (Q_heater * state_df['Decision'][t] - heat_loss_air) / C_air
-        wall_temperature[t + 1] = wall_temperature[t] + dt * (heat_loss_air - heat_loss_wall) / C_walls
+        indoor_temperature[t + 1] = indoor_temperature[t] + dt * (house.Q_heater * state_df['Decision'][t] - heat_loss_air) / house.C_air
+        wall_temperature[t + 1] = wall_temperature[t] + dt * (heat_loss_air - heat_loss_wall) / house.C_walls
 
     # Calculate the cost of the baseline decision
     state_df['Cost'] = state_df['Price'] * state_df['Decision']
@@ -383,4 +390,52 @@ def plot_combined_cases(fig1, fig2, state_df1, state_df2):
     ax1.set_ylabel('Values')
     ax1.set_title('Combined Baseline and Optimal Cases')
 
+    return fig
+
+
+def plot_factor_analysis(optimal_cost,baseline_cost,
+                        C_walls_list, Q_heater_list, R_external_list,
+                        type):
+    # Create meshgrid
+    X, Y, Z = np.meshgrid(C_walls_list, Q_heater_list, R_external_list)
+    if type == 'Relative':
+        values = 100 * (baseline_cost - optimal_cost) / baseline_cost
+        title = 'Relative Cost Savings (%)'
+    elif type == 'Absolute':
+        values = baseline_cost - optimal_cost
+        title = 'Absolute Cost Savings (€)'
+
+
+    # Flatten for Plotly
+    X_flat = X.flatten()
+    Y_flat = Y.flatten()
+    Z_flat = Z.flatten()
+    values_flat = values.flatten()
+
+    # Create interactive 3D scatter plot
+    fig = go.Figure(data=[go.Scatter3d(
+        x=X_flat, 
+        y=Y_flat, 
+        z=Z_flat, 
+        mode='markers',
+        marker=dict(
+            size=5,
+            color=values_flat,  # Color by cost_diff values
+            colorscale='PRGn',
+            colorbar=dict(title=title),
+            opacity=0.8
+        )
+    )])
+
+    # Set axis labels
+    fig.update_layout(
+        scene=dict(
+            xaxis_title='Wall heat capacity (kWh/°C)',
+            yaxis_title='Heating Power (kW)',
+            zaxis_title='R-Value (°C/kW)',
+            aspectmode='cube',  # Forces equal aspect ratio
+            aspectratio=dict(x=1, y=1, z=1)  # Sets the aspect ratio to 1:1:1
+        ),
+        title="{} Cost Savings Analysis".format(type),
+    )
     return fig

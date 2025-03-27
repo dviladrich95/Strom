@@ -44,11 +44,13 @@ def test_get_state_df():
     decision = np.sign(decision)
     decision = (decision + 1) / 2
 
-
-    state = utils.get_state_df(temp_price_df, decision)
+    house = utils.House()
+    state = utils.get_state_df(temp_price_df, decision, house)
     assert state.shape[0] == time_steps
 
 def test_compare_decision_costs():
     temp_price_df = utils.get_temp_price_df()
-    utils.compare_decision_costs(temp_price_df)
+    house = utils.House()
+    optimal_state_df, baseline_state_df = utils.compare_decision_costs(temp_price_df, house)
+    assert optimal_state_df['Cost'].sum() < baseline_state_df['Cost'].sum()
 
