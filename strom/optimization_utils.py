@@ -9,175 +9,19 @@ from datetime import datetime
 
 import os
 import xml.etree.ElementTree as ET
-
 from entsoe import EntsoePandasClient
 
-def find_root_dir(target_folder="Strom"):
-    """
-    Recursively searches for the specified target folder in the current directory
-    and its parent directories, returning the absolute path to the target folder
-    if found.
-    Args:
-        target_folder (str): The name of the folder to search for. Defaults to "Strom".
-    Returns:
-        str: The absolute path to the target folder if found.
-    Raises:
-        FileNotFoundError: If the target folder is not found in the current directory
-                           or any of its parent directories.
-    """
-    current_dir = os.getcwd()
-    
-    while True:
-        if target_folder in os.listdir(current_dir):
-            return os.path.abspath(os.path.join(current_dir, target_folder))
-        
-        parent_dir = os.path.dirname(current_dir)
-        if parent_dir == current_dir:  # Reached the filesystem root
-            raise FileNotFoundError(f"'{target_folder}' folder not found in any parent directories.")
-        
-        current_dir = parent_dir
-
-def get_api_key(key_path):
-    """
-    Reads an API key from a file.
-
-    Args:
-        key_path (str): The path to the file containing the API key.
-
-    Returns:
-        str: The API key read from the file.
-    """
-    with open(key_path, 'r') as file:
-        api_key = file.read().strip()  # Read the file
-    return api_key
-
-def regularize_df(df):
-
-    df_resamp = df.resample('1h').asfreq()
-    # make a new dataframe without any columns
-    df_resamp = df_resamp.drop(columns = df_resamp.columns)
-
-    #merge dataframes
-    merged_df = pd.merge(df_resamp, df, left_index=True, right_index=True, how='outer')
-    #interpolate the missing values
-    merged_df = merged_df.interpolate(method='cubic')
-
-    #extrapolate the missing values
-    merged_df = merged_df.interpolate(method='cubic', limit_direction='both')
-    # take only the rows with indices present in the resampled dataframe
-    merged_df = merged_df[merged_df.index.isin(df_resamp.index)]
-
-    #remove rows with Nan
-    merged_df = merged_df.dropna()
-    return merged_df
-
-def get_temp_series():
-    """
-    Fetches weather data for Barcelona from the OpenWeatherMap API, processes it, and returns a DataFrame with hourly temperature data.
-    The function performs the following steps:
-    1. Reads the OpenWeatherMap API key from a configuration file.
-    2. Makes an API call to fetch the weather forecast data for Barcelona.
-    3. Parses the JSON response to extract timestamps and temperatures.
-    4. Converts the timestamps to the 'Europe/Madrid' timezone.
-    5. Converts temperatures from Kelvin to Celsius.
-    6. Interpolates missing data points to generate an hourly temperature DataFrame.
-    7. Ensures the DataFrame covers exactly a 24-hour range starting from the current hour.
-    Returns:
-        pd.DataFrame: A DataFrame with two columns:
-            - 'Timestamp': Timestamps in the 'Europe/Madrid' timezone.
-            - 'Temperature': Temperatures in Celsius.
-    """
-
-    # open weather map API key text file
-    os.chdir(find_root_dir())
-    with open('./config/weather_api_key.txt') as f:
-        API_KEY = f.read().strip()
-
-    call_str = "https://api.openweathermap.org/data/2.5/forecast?q=Barcelona&appid=" + API_KEY
-
-    # Make the API call
-    response = requests.get(call_str)
-
-    # Check if the request was successful (status code 200)
-    if response.status_code == 200:
-        data = response.json()  # Parse the JSON response
-
-        # Prepare lists for timestamps and temperatures
-        timestamps = [
-            pd.Timestamp(entry['dt'], unit='s', tz='UTC').tz_convert('Europe/Madrid')  # Convert to Madrid timezone
-            for entry in data['list']
-        ]
-        temperatures = [entry['main']['temp'] for entry in data['list']]
-
-        # Create a DataFrame
-        temp_series = pd.Series(
-            data=np.array(temperatures) - 273.15,  # Convert Kelvin to Celsius
-            index=pd.to_datetime(timestamps, utc=True).tz_convert('Europe/Madrid'),
-            name='Temperature')
-
-    else:
-        print(f"Error: {response.status_code}")
-
-    return temp_series
-
-def get_price_series(tolls_and_charges=0.1): #tolls and charges as an approximate constant minimum price, in €/kWh
-
-
-    price_api_key = get_api_key('./config/price_api_key.txt')  # Please see readme to see how to create your config folder with the API key
-
-    # Replace with your API key
-    client = EntsoePandasClient(api_key=price_api_key)
-
-    # Define the current timestamp (now) and timezone
-    start = pd.Timestamp.now(tz='Europe/Madrid').round('min')  # Current time in Madrid timezone, rounded to the nearest minute
-    end = start + pd.Timedelta(hours=24)  # 24 hours after the current time
-
-    # Country code for Spain
-    country_code = 'ES'  # Spain
-
-    # Querying the day-ahead prices for Spain
-    price_series = client.query_day_ahead_prices(country_code, start=start, end=end)
-
-    # Change series name to Prices
-    price_series.name = 'Price'
-
-    # divide the prices by 1000 to convert the price from (€/MWh) to (€/kWh)
-    price_series = price_series / 1000.0 + tolls_and_charges
-
-    return price_series
-
-def join_data(temp_series, price_series):
-    """
-    Merge temperature and price dataframes on the 'Timestamp' column and extract temperature and prices as numpy arrays.
-    Parameters:
-    temp_df (pd.DataFrame): DataFrame containing temperature data with a 'Timestamp' column.
-    prices_df (pd.DataFrame): DataFrame containing price data with a 'Timestamp' column.
-    Returns:
-    pd.DataFrame: Merged DataFrame containing both temperature and price data.
-    """
-    
-    # make one dataframe from the two series
-    temp_df = temp_series.to_frame()
-    prices_df = price_series.to_frame()
-
-    # Merge the two dataframes on the 'Timestamp' column
-    temp_price_df = pd.merge(temp_df, prices_df, left_index=True, right_index=True,how='outer')
-
-    # regularize the dataframe
-    temp_price_df = regularize_df(temp_price_df)
-
-    return temp_price_df  # Returning the merged dataframe
+from strom import data_utils
+from strom import api_utils
 
 def get_temp_price_df():
-    temp_df = get_temp_series()
-    prices_df = get_price_series()
-    temp_price_df = join_data(temp_df, prices_df)
+    temp_df = data_utils.get_temp_series()
+    prices_df = data_utils.get_price_series()
+    temp_price_df = data_utils.join_data(temp_df, prices_df)
     return temp_price_df
 
 # parameters estimated from https://protonsforbreakfast.wordpress.com/2022/12/19/estimating-the-heat-capacity-of-my-house/
 # C_ air = 0.15*C_walls
-
-
 # define an object heating_parameters
 
 class House:
@@ -360,7 +204,7 @@ def plot_state(state_df, case_label, plot_price=True):
 
 def plot_combined_cases(state_opt_df,state_base_df):
     #save the plots in the plots folder
-    os.chdir(find_root_dir())
+    os.chdir(api_utils.find_root_dir())
 
     fig, ax1 = plt.subplots()
 

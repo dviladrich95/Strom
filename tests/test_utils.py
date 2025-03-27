@@ -1,32 +1,52 @@
-from strom import utils
+from strom import optimization_utils
+from strom.api_utils import read_api_key as get_api_key, get_weather_data, get_prices
+from strom.data_utils import get_temp_price_df, join_data
+
 import numpy as np
 
 def test_get_api_key():
     test_key_path = './tests/test_price_api_key.txt'
-    api_key = utils.get_api_key(test_key_path)
+    api_key = get_api_key(test_key_path)
     assert api_key == 'test123'
 
 def test_get_weather_data():
-    temp_series = utils.get_temp_series()
-    # no nan values
-    assert not temp_series.isnull().values.any()
+    temp_df = get_weather_data(city="Oslo")
+    assert temp_df.shape[1] == 1
+    assert temp_df.shape[0] == 24
     #check that all values are non nan
-    assert not temp_series.isnull().values.any()
-    #check that the name of the series is 'Temperature'
-    assert temp_series.name == 'Temperature'
+    assert not temp_df.isnull().values.any()
+    #check that the dataframe has a column whose name is 'Temperature'
+    assert 'Temperature' in temp_df.columns
+
+def test_get_weather_data_different_cities():
+    oslo_df = get_weather_data(city="Oslo")
+    bergen_df = get_weather_data(city="Bergen")
+    
+    assert oslo_df.shape == bergen_df.shape
+    assert not oslo_df['Temperature'].equals(bergen_df['Temperature'])
+    assert oslo_df.shape[0] == 24
+    assert oslo_df.shape[1] == 1
 
 def test_get_prices():
-    price_series = utils.get_price_series()
-    # no nan values
-    assert not price_series.isnull().values.any()
-    #check that the name of the series is 'Price'
-    assert price_series.name == 'Price'
+    prices_df = get_prices()
+    assert prices_df.shape[0] == 24
 
+def test_join_data():
+    weather_df = get_weather_data(city="Oslo")
+    prices_df = get_prices()
 
+    assert weather_df.shape[0] == 24
+    assert prices_df.shape[0] == 24
+
+    df = join_data(weather_df, prices_df)
+    assert df.shape[0] == 24
+    assert df.shape[1] == 2
+    assert 'Temperature' in df.columns
+    assert 'Price' in df.columns
 
 def test_get_temp_price_df():
-    temp_price_df = utils.get_temp_price_df()
-    assert temp_price_df.shape[0] <= 24
+    temp_price_df = get_temp_price_df()
+    assert temp_price_df.shape[0] == 24
     assert temp_price_df.shape[1] == 2
     assert 'Temperature' in temp_price_df.columns
     assert 'Price' in temp_price_df.columns
@@ -36,7 +56,7 @@ def test_get_temp_price_df():
     assert (temp_price_df.index[1] - temp_price_df.index[0]).seconds == 3600
 
 def test_get_state_df():
-    temp_price_df = utils.get_temp_price_df()
+    temp_price_df = get_temp_price_df()
     time_steps = len(temp_price_df)
     # make a decision function that is a sine wave array
     decision = np.sin(np.linspace(0, 5*2*np.pi, time_steps))
@@ -44,13 +64,12 @@ def test_get_state_df():
     decision = np.sign(decision)
     decision = (decision + 1) / 2
 
-    house = utils.House()
-    state = utils.get_state_df(temp_price_df, decision, house)
+    house = optimization_utils.House()
+    state = optimization_utils.get_state_df(temp_price_df, decision, house)
     assert state.shape[0] == time_steps
 
 def test_compare_decision_costs():
-    temp_price_df = utils.get_temp_price_df()
-    house = utils.House()
-    optimal_state_df, baseline_state_df = utils.compare_decision_costs(temp_price_df, house)
+    temp_price_df = get_temp_price_df()
+    house = optimization_utils.House()
+    optimal_state_df, baseline_state_df = optimization_utils.compare_decision_costs(temp_price_df, house)
     assert optimal_state_df['Cost'].sum() < baseline_state_df['Cost'].sum()
-
