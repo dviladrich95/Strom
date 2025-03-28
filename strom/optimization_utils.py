@@ -28,7 +28,7 @@ class House:
     def __init__(self, C_air=0.56, C_wall=3.5, R_interior=1.0,
                 R_exterior=6.06, Q_heater=2.0, T_min=18.0, 
                 T_max=24.0, T_interior_init = 18.5,
-                T_wall_init = 18.5, tolls_and_taxes = 0.05,  freq='h'):
+                T_wall_init = 18.5, P_base = 0.05,  freq='h'):
         
         self.C_air = C_air
         self.C_wall = C_wall
@@ -40,7 +40,7 @@ class House:
         self.T_max=T_max
         self.T_interior_init = T_interior_init
         self.T_wall_init = T_wall_init
-        self.tolls_and_taxes = tolls_and_taxes
+        self.P_base = P_base
 
 
 import cvxpy as cp
@@ -52,7 +52,7 @@ def find_heating_output(temp_price_df, house, heating_mode):
     using explicit Euler integration for thermal dynamics.
     """
     state_df = temp_price_df.copy()  # Make a copy of the dataframe
-    state_df['Price'] = temp_price_df['Price'] + house.tolls_and_taxes  # Add custom tolls and taxes
+    state_df['Price'] = temp_price_df['Price'] + house.P_base  # Add custom tolls and taxes
 
     if house.freq == 'min':
         state_df = state_df.resample('min').interpolate(method='cubic')
@@ -67,44 +67,27 @@ def find_heating_output(temp_price_df, house, heating_mode):
     heater_output = cp.Variable(time_steps)
     constraints = [heater_output >= 0.0, heater_output <= 1.0]
     
+    # Define the state vector variable: T[0,:] = T_interior, T[1,:] = wall_temperature
     T = cp.Variable((2, time_steps))
 
-    # Initial conditions:
+    # Initial conditions
     constraints.append(T[0, 0] == house.T_interior_init)
     constraints.append(T[1, 0] == house.T_wall_init)
 
-    # Loop over time steps and define dynamics using slicing.
+    # Define the system matrix A
+    A = cp.vstack([
+        [-1./(house.R_interior * house.C_air), 1./(house.R_interior * house.C_air)],
+        [1./(house.R_interior * house.C_wall), -((1./house.R_interior) + (1./house.R_exterior)) / house.C_wall]
+    ])
+
+    # Dynamics constraints: For each time step, T[t+1] = T[t] + dt * (A @ T[t] + b_t)
     for t in range(time_steps - 1):
-        # Calculate heat losses
-        heat_loss_air  = (T[0, t] - T[1, t]) / house.R_interior
-        heat_loss_wall = (T[1, t] - T_exterior.iloc[t]) / house.R_exterior
-
-        # Separate constraints (original slicing method):
-        constraints.append(
-            T[0, t + 1] == T[0, t] + dt * (house.Q_heater * heater_output[t] - heat_loss_air) / house.C_air
-        )
-        #constraints.append(
-        #    T[1, t + 1] == T[1, t] + dt * (heat_loss_air - heat_loss_wall) / house.C_wall
-        #)
-        
-        # ---- Intermediate Step: Build update using vectorized components ----
-        # Forcing terms (only the parts that don't involve T[t] differences):
-        b_int = (house.Q_heater * heater_output[t]) / house.C_air
-        b_wall = -(T_exterior.iloc[t]) / (house.R_exterior * house.C_wall)
-        
-        # State coupling terms:
-        state_int = -(T[0, t] - T[1, t]) / (house.R_interior * house.C_air)
-        state_wall =  (T[0, t] - T[1, t]) / (house.R_interior * house.C_wall)
-        
-        # Form the complete update vector:
-        update_int = T[0, t] + dt * (state_int + b_int)
-        update_wall = T[1, t] + dt * (state_wall + b_wall)  # note the minus sign for the wall forcing term
-        update   = cp.vstack([update_int, update_wall])
-        
-        # Add the vectorized constraint:
-        #constraints.append( T[0, t+1] == update_int )
-        constraints.append( T[1, t+1] == update_wall )
-
+        b_t = cp.vstack([
+            house.Q_heater * heater_output[t] / house.C_air,
+            T_exterior.iloc[t] / (house.R_exterior * house.C_wall)
+        ])
+        constraints.append( T[0, t + 1] == T[0, t] + dt * (A[0,0] * T[0, t] + A[0,1] * T[1, t] + b_t[0]) )
+        constraints.append( T[1, t + 1] == T[1, t] + dt * (A[1,0] * T[0, t] + A[1,1] * T[1, t] + b_t[1]) )
     
     # Minimum and maximum temperature constraint
     constraints.append(T[0, :] >= house.T_min)  # Interior temperature constraint
@@ -112,14 +95,14 @@ def find_heating_output(temp_price_df, house, heating_mode):
     
     # Objective function
     if heating_mode == "optimal":
-        obj = cp.sum(cp.multiply(state_df["Price"], dt * heater_output * house.Q_heater))
+        obj = cp.sum(cp.multiply(state_df["Price"], dt * house.Q_heater * heater_output ))
     elif heating_mode == "baseline":
         obj = cp.sum(cp.square(house.T_min - T[0, :]))  # Interior temperature squared error
     objective = cp.Minimize(obj)
     
     # Solve optimization problem
     problem = cp.Problem(objective, constraints)
-    problem.solve(verbose = True)
+    problem.solve()
 
     # Check if an optimal solution was found
     if problem.status == cp.OPTIMAL:
