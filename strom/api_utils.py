@@ -76,7 +76,7 @@ def interpolate_hourly_data(df: pd.DataFrame, hours: int) -> pd.DataFrame:
     df = df.reindex(time_range).interpolate()
     return df.bfill() if df.isnull().values.any() else df
 
-def get_spain_electricity_prices(toll_and_tax= 0.1) -> pd.DataFrame:
+def get_spain_electricity_prices() -> pd.DataFrame:
     price_api_key = os.getenv('PRICE_API_KEY') or read_api_key('./config/price_api_key.txt')
     client = EntsoePandasClient(api_key=price_api_key)
     
@@ -88,7 +88,7 @@ def get_spain_electricity_prices(toll_and_tax= 0.1) -> pd.DataFrame:
     return (prices.to_frame(name='Price')
             .reindex(time_range, method='nearest')
             .head(24)
-            .assign(Price=lambda x: x['Price'] / 1000 + toll_and_tax))
+            .assign(Price=lambda x: x['Price'] / 1000))
 
 def get_weather_data(city: str = "Barcelona, ES") -> pd.DataFrame:
     return fetch_city_weather(city)

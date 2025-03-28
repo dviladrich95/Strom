@@ -28,7 +28,7 @@ class House:
     def __init__(self, C_air=0.56, C_walls=3.5, R_internal=1.0,
                 R_external=6.06, Q_heater=2.0, min_temperature=18.0, 
                 max_temperature=24.0, init_indoor_temp = 18.5,
-                init_wall_temp = 18.5, freq='h'):
+                init_wall_temp = 18.5, tolls_and_taxes = 0.05,  freq='h'):
         
         self.C_air = C_air
         self.C_walls = C_walls
@@ -40,6 +40,7 @@ class House:
         self.max_temperature=max_temperature
         self.init_indoor_temp = init_indoor_temp
         self.init_wall_temp = init_wall_temp
+        self.tolls_and_taxes = tolls_and_taxes
 
 
 def find_heating_decision(temp_price_df, house, heating_mode):
@@ -48,6 +49,8 @@ def find_heating_decision(temp_price_df, house, heating_mode):
     using explicit Euler integration for thermal dynamics.
     """
     state_df = temp_price_df.copy()  # Make a copy of the dataframe
+    state_df['Price'] = temp_price_df['Price'] + house.tolls_and_taxes # Add your electricity provider's custom tolls and taxes
+
     if house.freq == 'min':
         state_df = state_df.resample('min').interpolate(method='cubic')
         dt = 1.0/60
