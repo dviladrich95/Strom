@@ -14,15 +14,15 @@ def test_get_weather_data():
     assert temp_df.shape[1] == 1
     #check that all values are non nan
     assert not temp_df.isnull().values.any()
-    #check that the dataframe has a column whose name is 'Outdoor Temperature'
-    assert 'Outdoor Temperature' in temp_df.columns
+    #check that the dataframe has a column whose name is 'Exterior Temperature'
+    assert 'Exterior Temperature' in temp_df.columns
 
 def test_get_weather_data_different_cities():
     oslo_df = get_weather_data(city="Oslo")
     bergen_df = get_weather_data(city="Bergen")
     
     assert oslo_df.shape == bergen_df.shape
-    assert not oslo_df['Outdoor Temperature'].equals(bergen_df['Outdoor Temperature'])
+    assert not oslo_df['Exterior Temperature'].equals(bergen_df['Exterior Temperature'])
     assert oslo_df.shape[1] == 1
 
 def test_join_data():
@@ -31,13 +31,13 @@ def test_join_data():
 
     df = join_data(weather_df, prices_df)
     assert df.shape[1] == 2
-    assert 'Outdoor Temperature' in df.columns
+    assert 'Exterior Temperature' in df.columns
     assert 'Price' in df.columns
 
 def test_get_temp_price_df():
     temp_price_df = get_temp_price_df()
     assert temp_price_df.shape[1] == 2
-    assert 'Outdoor Temperature' in temp_price_df.columns
+    assert 'Exterior Temperature' in temp_price_df.columns
     assert 'Price' in temp_price_df.columns
     #check that there are no nan values
     assert temp_price_df.isnull().values.any() == False

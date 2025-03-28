@@ -21,31 +21,31 @@ def get_temp_price_df():
     return temp_price_df
 
 # parameters estimated from https://protonsforbreakfast.wordpress.com/2022/12/19/estimating-the-heat-capacity-of-my-house/
-# C_ air = 0.15*C_walls
+# C_ air = 0.15*C_wall
 # define an object heating_parameters
 
 class House:
-    def __init__(self, C_air=0.56, C_walls=3.5, R_internal=1.0,
-                R_external=6.06, Q_heater=2.0, min_temperature=18.0, 
-                max_temperature=24.0, init_indoor_temp = 18.5,
-                init_wall_temp = 18.5, tolls_and_taxes = 0.05,  freq='h'):
+    def __init__(self, C_air=0.56, C_wall=3.5, R_interior=1.0,
+                R_exterior=6.06, Q_heater=2.0, T_min=18.0, 
+                T_max=24.0, T_interior_init = 18.5,
+                T_wall_init = 18.5, tolls_and_taxes = 0.05,  freq='h'):
         
         self.C_air = C_air
-        self.C_walls = C_walls
-        self.R_internal = R_internal
-        self.R_external= R_external
+        self.C_wall = C_wall
+        self.R_interior = R_interior
+        self.R_exterior= R_exterior
         self.Q_heater=Q_heater
         self.freq=freq
-        self.min_temperature=min_temperature
-        self.max_temperature=max_temperature
-        self.init_indoor_temp = init_indoor_temp
-        self.init_wall_temp = init_wall_temp
+        self.T_min=T_min
+        self.T_max=T_max
+        self.T_interior_init = T_interior_init
+        self.T_wall_init = T_wall_init
         self.tolls_and_taxes = tolls_and_taxes
 
 
 def find_heating_decision(temp_price_df, house, heating_mode):
     """
-    Determines the optimal heating decision for a given day based on outdoor temperature and electricity price,
+    Determines the optimal heating decision for a given day based on exterior temperature and electricity price,
     using explicit Euler integration for thermal dynamics.
     """
     state_df = temp_price_df.copy()  # Make a copy of the dataframe
@@ -58,41 +58,41 @@ def find_heating_decision(temp_price_df, house, heating_mode):
         dt = 1.0
 
     time_steps = len(state_df)
-    outdoor_temperature = state_df["Outdoor Temperature"]
+    T_exterior = state_df["Exterior Temperature"]
     
 
     heater_state = cp.Variable(time_steps)
     constraints = [heater_state >= 0, heater_state <= 1]
     
     # Temperature variables
-    indoor_temperature = cp.Variable(time_steps)
+    T_interior = cp.Variable(time_steps)
     wall_temperature = cp.Variable(time_steps)
     
     # Initial conditions assuming slightly warmer start
-    constraints.append(indoor_temperature[0] == house.init_indoor_temp)  
-    constraints.append(wall_temperature[0] == house.init_wall_temp)
+    constraints.append(T_interior[0] == house.T_interior_init)  
+    constraints.append(wall_temperature[0] == house.T_wall_init)
     
     # Thermal dynamics constraints
     for t in range(time_steps - 1):
-        heat_loss_air = (indoor_temperature[t] - wall_temperature[t]) / house.R_internal
-        heat_loss_wall = (wall_temperature[t] - outdoor_temperature.iloc[t]) / house.R_external
+        heat_loss_air = (T_interior[t] - wall_temperature[t]) / house.R_interior
+        heat_loss_wall = (wall_temperature[t] - T_exterior.iloc[t]) / house.R_exterior
         
         constraints.append(
-            indoor_temperature[t + 1] == indoor_temperature[t] + dt * (house.Q_heater * heater_state[t] - heat_loss_air) / house.C_air
+            T_interior[t + 1] == T_interior[t] + dt * (house.Q_heater * heater_state[t] - heat_loss_air) / house.C_air
         )
         constraints.append(
-            wall_temperature[t + 1] == wall_temperature[t] + dt * (heat_loss_air - heat_loss_wall) / house.C_walls
+            wall_temperature[t + 1] == wall_temperature[t] + dt * (heat_loss_air - heat_loss_wall) / house.C_wall
         )
     
     # Minimum and maximum temperature constraint
-    constraints.append(indoor_temperature >= house.min_temperature)
-    constraints.append(indoor_temperature <= house.max_temperature)
+    constraints.append(T_interior >= house.T_min)
+    constraints.append(T_interior <= house.T_max)
     
     # Objective function
     if heating_mode == "optimal":
         obj = cp.sum(cp.multiply(state_df["Price"], dt* heater_state * house.Q_heater))
     elif heating_mode == "baseline":
-        obj = cp.sum(cp.square(house.min_temperature-indoor_temperature))
+        obj = cp.sum(cp.square(house.T_min-T_interior))
     objective = cp.Minimize(obj)
     
     # Solve optimization
@@ -103,15 +103,15 @@ def find_heating_decision(temp_price_df, house, heating_mode):
     if problem.status == cp.OPTIMAL:
         #add the decision to the dataframe
         state_df['Decision'] = heater_state.value
-        state_df['Indoor Temperature'] = indoor_temperature.value
+        state_df['Interior Temperature'] = T_interior.value
         state_df['Wall Temperature'] = wall_temperature.value
         state_df['Cost'] = state_df['Price'] * dt * state_df['Decision'] * house.Q_heater
     else:
-        print("No optimal solution found with parameters: C_air={}, C_walls={}, R_internal={}, R_external={}, Q_heater={}, dt={}, min_temperature={}."
-                        .format(house.C_air, house.C_walls, house.R_internal, house.R_external, house.Q_heater, dt, house.min_temperature))
+        print("No optimal solution found with parameters: C_air={}, C_wall={}, R_interior={}, R_exterior={}, Q_heater={}, dt={}, T_min={}."
+                        .format(house.C_air, house.C_wall, house.R_interior, house.R_exterior, house.Q_heater, dt, house.T_min))
         # fill with NaN arrays
         state_df['Decision'] = np.full(time_steps, np.nan)
-        state_df['Indoor Temperature'] = np.full(time_steps, np.nan)
+        state_df['Interior Temperature'] = np.full(time_steps, np.nan)
         state_df['Wall Temperature'] = np.full(time_steps, np.nan)
         state_df['Cost'] = np.full(time_steps, np.nan)
     return state_df
@@ -142,23 +142,23 @@ def get_state_df(temp_price_df, decision, house):
     
     time_steps = len(state_df)
 
-    indoor_temperature = np.zeros(time_steps)
+    T_interior = np.zeros(time_steps)
     wall_temperature = np.zeros(time_steps)
 
-    indoor_temperature[0] = house.init_indoor_temp
-    wall_temperature[0] = house.init_wall_temp
+    T_interior[0] = house.T_interior_init
+    wall_temperature[0] = house.T_wall_init
 
     for t in range(time_steps - 1):
-        heat_loss_air = (indoor_temperature[t] - wall_temperature[t]) / house.R_internal
-        heat_loss_wall = (wall_temperature[t] - state_df['Outdoor Temperature'][t]) / house.R_external
+        heat_loss_air = (T_interior[t] - wall_temperature[t]) / house.R_interior
+        heat_loss_wall = (wall_temperature[t] - state_df['Exterior Temperature'][t]) / house.R_exterior
         
-        indoor_temperature[t + 1] = indoor_temperature[t] + dt * (house.Q_heater * state_df['Decision'][t] - heat_loss_air) / house.C_air
-        wall_temperature[t + 1] = wall_temperature[t] + dt * (heat_loss_air - heat_loss_wall) / house.C_walls
+        T_interior[t + 1] = T_interior[t] + dt * (house.Q_heater * state_df['Decision'][t] - heat_loss_air) / house.C_air
+        wall_temperature[t + 1] = wall_temperature[t] + dt * (heat_loss_air - heat_loss_wall) / house.C_wall
 
     # Calculate the cost of the baseline decision
     state_df['Cost'] = state_df['Price'] * dt * state_df['Decision'] * house.Q_heater
     state_df['Wall Temperature'] = wall_temperature
-    state_df['Indoor Temperature'] = indoor_temperature
+    state_df['Interior Temperature'] = T_interior
 
     return state_df
 
@@ -183,8 +183,8 @@ def plot_state(state_df, case_label, plot_price=True):
     ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
 
     color = 'tab:red'
-    ax2.set_ylabel(f'{case_label} Indoor Temperature', color=color)
-    ax2.plot(state_df['Indoor Temperature'], color=color, linestyle='-')
+    ax2.set_ylabel(f'{case_label} Interior Temperature', color=color)
+    ax2.plot(state_df['Interior Temperature'], color=color, linestyle='-')
     ax2.tick_params(axis='y', labelcolor=color)
 
     ax3 = ax1.twinx()
@@ -205,7 +205,7 @@ def plot_state(state_df, case_label, plot_price=True):
     fig.tight_layout()  # otherwise the right y-label is slightly clipped
     return fig 
 
-def plot_combined_cases(state_opt_df, state_base_df, plot_heater_state=True, plot_price=True, plot_outdoor_temp=True, plot_wall_temp=True):
+def plot_combined_cases(state_opt_df, state_base_df, plot_heater_state=True, plot_price=True, plot_T_exterior=True, plot_wall_temp=True):
     # Determine the number of subplots based on heater state
     fig, (ax_temp, ax_cost) = plt.subplots(2, 1, figsize=(14, 8), 
                                               gridspec_kw={'height_ratios': [3, 1]}, sharex= True)
@@ -213,8 +213,8 @@ def plot_combined_cases(state_opt_df, state_base_df, plot_heater_state=True, plo
     # Single temperature axis
     color = 'tab:red'
     ax_temp.set_ylabel('Temperature (°C)')
-    ax_temp.plot(state_opt_df['Indoor Temperature'], color=color, linestyle='-', label='Optimal Indoor Temp')
-    ax_temp.plot(state_base_df['Indoor Temperature'], color=color, linestyle='--', label='Baseline Indoor Temp')
+    ax_temp.plot(state_opt_df['Interior Temperature'], color=color, linestyle='-', label='Optimal Interior Temp')
+    ax_temp.plot(state_base_df['Interior Temperature'], color=color, linestyle='--', label='Baseline Interior Temp')
     
     # Optional additional temperature plots
     if plot_wall_temp:
@@ -222,9 +222,9 @@ def plot_combined_cases(state_opt_df, state_base_df, plot_heater_state=True, plo
         ax_temp.plot(state_opt_df['Wall Temperature'], color=color, linestyle='-', label='Optimal Wall Temp')
         ax_temp.plot(state_base_df['Wall Temperature'], color=color, linestyle='--', label='Baseline Wall Temp')
     
-    if plot_outdoor_temp:
+    if plot_T_exterior:
         color = 'tab:pink'
-        ax_temp.plot(state_opt_df['Outdoor Temperature'], color=color, linestyle='-', label='Outdoor Temp')
+        ax_temp.plot(state_opt_df['Exterior Temperature'], color=color, linestyle='-', label='Exterior Temp')
 
     # Always plot cost on the first axis
     color = 'tab:blue'
