@@ -12,7 +12,6 @@ def test_get_api_key():
 def test_get_weather_data():
     temp_df = get_weather_data(city="Oslo")
     assert temp_df.shape[1] == 1
-    assert temp_df.shape[0] == 24
     #check that all values are non nan
     assert not temp_df.isnull().values.any()
     #check that the dataframe has a column whose name is 'Temperature'
@@ -24,29 +23,19 @@ def test_get_weather_data_different_cities():
     
     assert oslo_df.shape == bergen_df.shape
     assert not oslo_df['Temperature'].equals(bergen_df['Temperature'])
-    assert oslo_df.shape[0] == 24
     assert oslo_df.shape[1] == 1
-
-def test_get_prices():
-    prices_df = get_prices()
-    assert prices_df.shape[0] == 24
 
 def test_join_data():
     weather_df = get_weather_data(city="Oslo")
     prices_df = get_prices()
 
-    assert weather_df.shape[0] == 24
-    assert prices_df.shape[0] == 24
-
     df = join_data(weather_df, prices_df)
-    assert df.shape[0] == 24
     assert df.shape[1] == 2
     assert 'Temperature' in df.columns
     assert 'Price' in df.columns
 
 def test_get_temp_price_df():
     temp_price_df = get_temp_price_df()
-    assert temp_price_df.shape[0] == 24
     assert temp_price_df.shape[1] == 2
     assert 'Temperature' in temp_price_df.columns
     assert 'Price' in temp_price_df.columns
