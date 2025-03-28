@@ -1,6 +1,6 @@
 
 from strom.data_utils import get_temp_price_df
-from strom.optimization_utils import House, compare_decision_costs, plot_combined_cases, plot_factor_analysis
+from strom.optimization_utils import House, compare_output_costs, plot_combined_cases, plot_factor_analysis
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -18,7 +18,7 @@ house = House(
     T_wall_init = 18.5,
     freq = 'min')
 
-optimal_state_df, baseline_state_df = compare_decision_costs(temp_price_df,house)
+optimal_state_df, baseline_state_df = compare_output_costs(temp_price_df,house)
 
 fig = plot_combined_cases(optimal_state_df, baseline_state_df)
 # Save as png

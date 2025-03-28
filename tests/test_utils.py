@@ -47,18 +47,20 @@ def test_get_temp_price_df():
 def test_get_state_df():
     temp_price_df = get_temp_price_df()
     time_steps = len(temp_price_df)
-    # make a decision function that is a sine wave array
-    decision = np.sin(np.linspace(0, 5*2*np.pi, time_steps))
+    # make a output function that is a sine wave array
+    output = np.sin(np.linspace(0, 5*2*np.pi, time_steps))
     #make the sine wave into a square wave between 0 and 1
-    decision = np.sign(decision)
-    decision = (decision + 1) / 2
+    output = np.sign(output)
+    output = (output + 1) / 2
 
     house = optimization_utils.House()
-    state = optimization_utils.get_state_df(temp_price_df, decision, house)
+    state = optimization_utils.get_state_df(temp_price_df, output, house)
     assert state.shape[0] == time_steps
 
-def test_compare_decision_costs():
+def test_compare_output_costs():
     temp_price_df = get_temp_price_df()
     house = optimization_utils.House()
-    optimal_state_df, baseline_state_df = optimization_utils.compare_decision_costs(temp_price_df, house)
+    optimal_state_df, baseline_state_df = optimization_utils.compare_output_costs(temp_price_df, house)
+    assert baseline_state_df.isnull().values.any() == False
+    assert optimal_state_df.isnull().values.any() == False
     assert optimal_state_df['Cost'].sum() < baseline_state_df['Cost'].sum()

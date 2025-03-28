@@ -46,9 +46,9 @@ class House:
 import cvxpy as cp
 import numpy as np
 
-def find_heating_decision(temp_price_df, house, heating_mode):
+def find_heating_output(temp_price_df, house, heating_mode):
     """
-    Determines the optimal heating decision for a given day based on exterior temperature and electricity price,
+    Determines the optimal heating output for a given day based on exterior temperature and electricity price,
     using explicit Euler integration for thermal dynamics.
     """
     state_df = temp_price_df.copy()  # Make a copy of the dataframe
@@ -65,30 +65,46 @@ def find_heating_decision(temp_price_df, house, heating_mode):
     
     # Initialize CVXPY variables
     heater_output = cp.Variable(time_steps)
-    constraints = [heater_output >= 0, heater_output <= 1]
+    constraints = [heater_output >= 0.0, heater_output <= 1.0]
     
-    # Temperature variables (vectorized)
-    T = cp.Variable((2, time_steps))  # 2 rows: [T_interior, wall_temperature]
-    
-    # Initial conditions
-    constraints.append(T[0, 0] == house.T_interior_init)  
+    T = cp.Variable((2, time_steps))
+
+    # Initial conditions:
+    constraints.append(T[0, 0] == house.T_interior_init)
     constraints.append(T[1, 0] == house.T_wall_init)
-    
-    # Thermal dynamics (vectorized)
-    A = np.array([
-        [-1/(house.R_interior * house.C_air), 1/(house.R_interior * house.C_air)],
-        [1/(house.R_interior * house.C_wall), -((1/house.R_interior) + (1/house.R_exterior)) / house.C_wall]
-    ])
-    
+
+    # Loop over time steps and define dynamics using slicing.
     for t in range(time_steps - 1):
-        # Define the forcing term b for time step t
-        b_t = cp.vstack([
-            house.Q_heater * heater_output[t] / house.C_air,
-            T_exterior.iloc[t] / (house.R_exterior * house.C_wall)
-        ])
+        # Calculate heat losses
+        heat_loss_air  = (T[0, t] - T[1, t]) / house.R_interior
+        heat_loss_wall = (T[1, t] - T_exterior.iloc[t]) / house.R_exterior
+
+        # Separate constraints (original slicing method):
+        constraints.append(
+            T[0, t + 1] == T[0, t] + dt * (house.Q_heater * heater_output[t] - heat_loss_air) / house.C_air
+        )
+        #constraints.append(
+        #    T[1, t + 1] == T[1, t] + dt * (heat_loss_air - heat_loss_wall) / house.C_wall
+        #)
         
-        # Thermal dynamics constraint: T[t+1] = T[t] + dt * (A @ T[t] + b_t)
-        constraints.append(T[:, t + 1] == T[:, t] + dt * (A @ T[:, t] + b_t))
+        # ---- Intermediate Step: Build update using vectorized components ----
+        # Forcing terms (only the parts that don't involve T[t] differences):
+        b_int = (house.Q_heater * heater_output[t]) / house.C_air
+        b_wall = -(T_exterior.iloc[t]) / (house.R_exterior * house.C_wall)
+        
+        # State coupling terms:
+        state_int = -(T[0, t] - T[1, t]) / (house.R_interior * house.C_air)
+        state_wall =  (T[0, t] - T[1, t]) / (house.R_interior * house.C_wall)
+        
+        # Form the complete update vector:
+        update_int = T[0, t] + dt * (state_int + b_int)
+        update_wall = T[1, t] + dt * (state_wall + b_wall)  # note the minus sign for the wall forcing term
+        update   = cp.vstack([update_int, update_wall])
+        
+        # Add the vectorized constraint:
+        #constraints.append( T[0, t+1] == update_int )
+        constraints.append( T[1, t+1] == update_wall )
+
     
     # Minimum and maximum temperature constraint
     constraints.append(T[0, :] >= house.T_min)  # Interior temperature constraint
@@ -103,19 +119,19 @@ def find_heating_decision(temp_price_df, house, heating_mode):
     
     # Solve optimization problem
     problem = cp.Problem(objective, constraints)
-    problem.solve()
+    problem.solve(verbose = True)
 
     # Check if an optimal solution was found
     if problem.status == cp.OPTIMAL:
-        # Add the decision to the dataframe
-        state_df['Decision'] = heater_output.value
+        # Add the output to the dataframe
+        state_df['Heater Output'] = heater_output.value
         state_df['Interior Temperature'] = T[0, :].value
         state_df['Wall Temperature'] = T[1, :].value
-        state_df['Cost'] = state_df['Price'] * dt * state_df['Decision'] * house.Q_heater
+        state_df['Cost'] = state_df['Price'] * dt * state_df['Heater Output'] * house.Q_heater
     else:
         print("No optimal solution found.")
         # Fill with NaN arrays
-        state_df['Decision'] = np.full(time_steps, np.nan)
+        state_df['Heater Output'] = np.full(time_steps, np.nan)
         state_df['Interior Temperature'] = np.full(time_steps, np.nan)
         state_df['Wall Temperature'] = np.full(time_steps, np.nan)
         state_df['Cost'] = np.full(time_steps, np.nan)
@@ -124,23 +140,23 @@ def find_heating_decision(temp_price_df, house, heating_mode):
 
 
 
-def compare_decision_costs(temp_price_df,house):
+def compare_output_costs(temp_price_df,house):
         
     """
     units will use kW and kWh
     """
 
-    optimal_state_df  = find_heating_decision(temp_price_df, house, "optimal")
-    #baseline_state_df = find_heating_decision(temp_price_df, house, "hybrid")
-    baseline_state_df = find_heating_decision(temp_price_df, house, "baseline")
+    optimal_state_df  = find_heating_output(temp_price_df, house, "optimal")
+    #baseline_state_df = find_heating_output(temp_price_df, house, "hybrid")
+    baseline_state_df = find_heating_output(temp_price_df, house, "baseline")
 
     return optimal_state_df, baseline_state_df
 
-def get_state_df(temp_price_df, decision, house):
+def get_state_df(temp_price_df, output, house):
     
     # time steps is the length of the time index resulting from starting at the first time and going to the last time in steps of dt
     state_df = temp_price_df.copy()  # Make a copy of the dataframe
-    state_df['Decision'] = decision
+    state_df['Heater Output'] = output
     if house.freq == 'min':
         state_df = state_df.resample('min').interpolate(method='cubic')
         dt = 1.0/60
@@ -159,11 +175,11 @@ def get_state_df(temp_price_df, decision, house):
         heat_loss_air = (T_interior[t] - wall_temperature[t]) / house.R_interior
         heat_loss_wall = (wall_temperature[t] - state_df['Exterior Temperature'][t]) / house.R_exterior
         
-        T_interior[t + 1] = T_interior[t] + dt * (house.Q_heater * state_df['Decision'][t] - heat_loss_air) / house.C_air
+        T_interior[t + 1] = T_interior[t] + dt * (house.Q_heater * state_df['Heater Output'][t] - heat_loss_air) / house.C_air
         wall_temperature[t + 1] = wall_temperature[t] + dt * (heat_loss_air - heat_loss_wall) / house.C_wall
 
-    # Calculate the cost of the baseline decision
-    state_df['Cost'] = state_df['Price'] * dt * state_df['Decision'] * house.Q_heater
+    # Calculate the cost of the baseline output
+    state_df['Cost'] = state_df['Price'] * dt * state_df['Heater Output'] * house.Q_heater
     state_df['Wall Temperature'] = wall_temperature
     state_df['Interior Temperature'] = T_interior
 
@@ -197,7 +213,7 @@ def plot_state(state_df, case_label, plot_price=True):
     ax3 = ax1.twinx()
     color = 'tab:green'
     ax3.spines['right'].set_position(('outward', 60))
-    ax3.plot(state_df['Decision'], color=color, linestyle='-')
+    ax3.plot(state_df['Heater Output'], color=color, linestyle='-')
     ax3.set_ylabel(f'{case_label} Heater Output', color=color)
     ax3.tick_params(axis='y', labelcolor=color)
 
@@ -255,8 +271,8 @@ def plot_combined_cases(state_opt_df, state_base_df, plot_heater_output=True, pl
         ax_heater = ax_cost.twinx()
         color = 'tab:green'
         ax_heater.spines["right"].set_position(("outward", 60))
-        ax_heater.plot(state_opt_df['Decision']*100, color=color, linestyle='-', label='Optimal Heater Output')
-        ax_heater.plot(state_base_df['Decision']*100, color=color, linestyle='--', label='Baseline Heater Output')
+        ax_heater.plot(state_opt_df['Heater Output']*100, color=color, linestyle='-', label='Optimal Heater Output')
+        ax_heater.plot(state_base_df['Heater Output']*100, color=color, linestyle='--', label='Baseline Heater Output')
         ax_heater.set_ylabel('Heater Output (%)', color=color)
         ax_heater.tick_params(axis='y', labelcolor=color)
 
