@@ -90,7 +90,7 @@ def find_heating_decision(temp_price_df, house, heating_mode):
     
     # Objective function
     if heating_mode == "optimal":
-        obj = cp.sum(cp.multiply(state_df["Price"], heater_state * house.Q_heater)) + 0.1*cp.norm(cp.diff(indoor_temperature), 1)
+        obj = cp.sum(cp.multiply(state_df["Price"], dt* heater_state * house.Q_heater))
     elif heating_mode == "baseline":
         obj = cp.sum(cp.square(house.min_temperature-indoor_temperature))
     objective = cp.Minimize(obj)
@@ -104,17 +104,16 @@ def find_heating_decision(temp_price_df, house, heating_mode):
         #add the decision to the dataframe
         state_df['Decision'] = heater_state.value
         state_df['Indoor Temperature'] = indoor_temperature.value
-        state_df['Cost'] = state_df['Price'] * state_df['Decision']
+        state_df['Wall Temperature'] = wall_temperature.value
+        state_df['Cost'] = state_df['Price'] * dt * state_df['Decision'] * house.Q_heater
     else:
         print("No optimal solution found with parameters: C_air={}, C_walls={}, R_internal={}, R_external={}, Q_heater={}, dt={}, min_temperature={}."
                         .format(house.C_air, house.C_walls, house.R_internal, house.R_external, house.Q_heater, dt, house.min_temperature))
         # fill with NaN arrays
         state_df['Decision'] = np.full(time_steps, np.nan)
         state_df['Indoor Temperature'] = np.full(time_steps, np.nan)
+        state_df['Wall Temperature'] = np.full(time_steps, np.nan)
         state_df['Cost'] = np.full(time_steps, np.nan)
-
-
-    
     return state_df
 
 
@@ -157,7 +156,8 @@ def get_state_df(temp_price_df, decision, house):
         wall_temperature[t + 1] = wall_temperature[t] + dt * (heat_loss_air - heat_loss_wall) / house.C_walls
 
     # Calculate the cost of the baseline decision
-    state_df['Cost'] = state_df['Price'] * state_df['Decision']
+    state_df['Cost'] = state_df['Price'] * dt * state_df['Decision'] * house.Q_heater
+    state_df['Wall Temperature'] = wall_temperature
     state_df['Indoor Temperature'] = indoor_temperature
 
     return state_df
