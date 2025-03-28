@@ -82,7 +82,7 @@ def find_heating_decision(temp_price_df, house, heating_mode):
     
     for t in range(time_steps - 1):
         # Define the forcing term b for time step t
-        b_t = np.array([
+        b_t = cp.vstack([
             house.Q_heater * heater_output[t] / house.C_air,
             T_exterior.iloc[t] / (house.R_exterior * house.C_wall)
         ])
