@@ -205,81 +205,86 @@ def plot_state(state_df, case_label, plot_price=True):
     fig.tight_layout()  # otherwise the right y-label is slightly clipped
     return fig 
 
-def plot_combined_cases(state_opt_df, state_base_df, plot_heater_state=True, plot_price=True, plot_outdoor_temp=True):
-    #save the plots in the plots folder
-    os.chdir(api_utils.find_root_dir())
-    legends = []
-    fig, ax1 = plt.subplots(figsize=(14, 7), constrained_layout=True)
+def plot_combined_cases(state_opt_df, state_base_df, plot_heater_state=True, plot_price=True, plot_outdoor_temp=True, plot_wall_temp=True):
+    # Determine the number of subplots based on heater state
+    fig, (ax_temp, ax_cost) = plt.subplots(2, 1, figsize=(14, 8), 
+                                              gridspec_kw={'height_ratios': [3, 1]}, sharex= True)
+    
+    # Single temperature axis
+    color = 'tab:red'
+    ax_temp.set_ylabel('Temperature (°C)')
+    ax_temp.plot(state_opt_df['Indoor Temperature'], color=color, linestyle='-', label='Optimal Indoor Temp')
+    ax_temp.plot(state_base_df['Indoor Temperature'], color=color, linestyle='--', label='Baseline Indoor Temp')
+    
+    # Optional additional temperature plots
+    if plot_wall_temp:
+        color = 'tab:brown'
+        ax_temp.plot(state_opt_df['Wall Temperature'], color=color, linestyle='-', label='Optimal Wall Temp')
+        ax_temp.plot(state_base_df['Wall Temperature'], color=color, linestyle='--', label='Baseline Wall Temp')
+    
+    if plot_outdoor_temp:
+        color = 'tab:pink'
+        ax_temp.plot(state_opt_df['Outdoor Temperature'], color=color, linestyle='-', label='Outdoor Temp')
 
     # Always plot cost on the first axis
     color = 'tab:blue'
-    ax1.set_xlabel('Time (h)')
-    ax1.set_ylabel('Cost (€)', color=color)
-    ax1.plot(state_opt_df['Cost'].cumsum(), color=color, linestyle='-')
-    ax1.plot(state_base_df['Cost'].cumsum(), color=color, linestyle='--')
-    ax1.tick_params(axis='y', labelcolor=color)
-    ax1.tick_params(axis='x', rotation=45)
-    
-    # Keep track of the number of additional axes
-    additional_axes_count = 0
-    
-    # Indoor Temperature Axis
-    if plot_outdoor_temp:
-        ax2 = ax1.twinx()  
-        additional_axes_count += 1
-        ax2.spines['right'].set_position(('outward', 60 * additional_axes_count))
-        color = 'tab:red'
-        ax2.set_ylabel('Indoor Temperature (°C)', color=color)
-        ax2.plot(state_opt_df['Indoor Temperature'], color=color, linestyle='-')
-        ax2.plot(state_base_df['Indoor Temperature'], color=color, linestyle='--')
-        ax2.tick_params(axis='y', labelcolor=color)
+    ax_cost.set_xlabel('Time (h)')
+    ax_cost.set_ylabel('Cost (€)', color=color)
+    ax_cost.plot(state_opt_df['Cost'].cumsum(), color=color, linestyle='-')
+    ax_cost.plot(state_base_df['Cost'].cumsum(), color=color, linestyle='--')
+    ax_cost.tick_params(axis='y', labelcolor=color)
+    ax_cost.tick_params(axis='x', rotation=45)
 
-    # Heater State Axis
-    if plot_heater_state:
-        ax3 = ax1.twinx()
-        additional_axes_count += 1
-        ax3.spines['right'].set_position(('outward', 60 * additional_axes_count))
-        color = 'tab:green'
-        ax3.plot(state_opt_df['Decision'], color=color, linestyle='-')
-        ax3.plot(state_base_df['Decision'], color=color, linestyle='--')
-        ax3.set_ylabel('Heater State', color=color)
-        ax3.tick_params(axis='y', labelcolor=color)
-
-    # Price Axis
+    # Price Axis (if needed)
     if plot_price:
-        ax4 = ax1.twinx()
-        additional_axes_count += 1
-        ax4.spines['right'].set_position(('outward', 60 * additional_axes_count))
+        ax_price = ax_cost.twinx()
         color = 'tab:grey'
-        ax4.plot(state_opt_df['Price'], color=color)
-        ax4.set_ylabel('Price (€/kWh)', color=color)
-        ax4.tick_params(axis='y', labelcolor=color)
+        ax_price.plot(state_opt_df['Price'], color=color)
+        ax_price.set_ylabel('Price (€/kWh)', color=color)
+        ax_price.tick_params(axis='y', labelcolor=color)
 
-    # Legend setup with conditional plotting
-    legends = []
-    if True:  # Always add cost legend
-        legends.append((['Optimal Cost', 'Baseline Cost'], ax1, 'tab:blue'))
-    
-    if plot_outdoor_temp:
-        legends.append((['Optimal Indoor Temperature', 'Baseline Indoor Temperature'], ax2, 'tab:red'))
+    # Heater State Subplot (if plot_heater_state is True)
+    if plot_heater_state:
+        ax_heater = ax_cost.twinx()
+        color = 'tab:green'
+        ax_heater.spines["right"].set_position(("outward", 60))
+        ax_heater.plot(state_opt_df['Decision']*100, color=color, linestyle='-', label='Optimal Heater State')
+        ax_heater.plot(state_base_df['Decision']*100, color=color, linestyle='--', label='Baseline Heater State')
+        ax_heater.set_ylabel('Heater State (%)', color=color)
+        ax_heater.tick_params(axis='y', labelcolor=color)
+
+    # Legend setup
+    legends_temp = [(ax_temp.get_legend_handles_labels()[1], ax_temp, 'tab:red')]
+    legends_cost = [(['Optimal Cost', 'Baseline Cost'], ax_cost, 'tab:blue')]
+
+    if plot_price:
+        legends_cost.append((['Price'], ax_price, 'tab:grey'))
     
     if plot_heater_state:
-        legends.append((['Optimal Heater State', 'Baseline Heater State'], ax3, 'tab:green'))
-    
-    if plot_price:
-        legends.append((['Price'], ax4, 'tab:grey'))
+        legends_cost.append((['Optimal Heater State', 'Baseline Heater State'], ax_heater, 'tab:green'))
 
-    # Place legends
-    for i, (legend_text, ax, color) in enumerate(legends):
+    # Place temp legends
+    for i, (legend_text, ax, color) in enumerate(legends_temp):
         ax.legend(
             legend_text, 
             loc='lower left', 
-            bbox_to_anchor=(0.30*i, 1.01), 
+            bbox_to_anchor=(0.25*i, 1.01), 
             ncol=len(legend_text),
-            prop={'size': 8}
+            prop={'size': 10}
         )
 
-    plt.subplots_adjust(top=0.85)  # Make room for legends
+    # Place cost legends
+    for i, (legend_text, ax, color) in enumerate(legends_cost):
+        ax.legend(
+            legend_text, 
+            loc='lower left', 
+            bbox_to_anchor=(0.25*i, 1.01), 
+            ncol=len(legend_text),
+            prop={'size': 10}
+        )
+
+    # Adjust layout
+    plt.tight_layout(rect=[0, 0, 1, 0.95])  # Leave room for legends
 
     return fig
 
