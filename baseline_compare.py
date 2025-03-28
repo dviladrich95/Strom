@@ -1,6 +1,6 @@
 
 from strom.data_utils import get_temp_price_df
-from strom.optimization_utils import House, compare_decision_costs, plot_state, plot_factor_analysis
+from strom.optimization_utils import House, compare_decision_costs, plot_combined_cases, plot_factor_analysis
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -16,14 +16,18 @@ house = House(
     max_temperature = 24,
     init_indoor_temp = 18.5,
     init_wall_temp = 20,
-    freq = 'h')
+    freq = 'min')
 
 optimal_state_df, baseline_state_df = compare_decision_costs(temp_price_df,house)
 
-fig_base = plot_state(baseline_state_df, 'Baseline')
-fig_opt = plot_state(optimal_state_df, 'Optimal')
+fig = plot_combined_cases(optimal_state_df, baseline_state_df)
+# Save as png
+fig.savefig("./plots/combined_cases.png")
 
-# Initialize parameters
+
+
+# Initialize parameters for factor analysis
+house.freq = 'h'
 n = 5
 min_temperature = 18.0
 C_air=0.56
@@ -38,23 +42,30 @@ baseline_cost = np.zeros((n, n, n))
 
 # Get temperature and price data once
 temp_price_df = get_temp_price_df()
+# Calculate total iterations for progress bar
+total_iterations = len(C_walls_list) * len(Q_heater_list) * len(R_external_list)
+# Initialize a counter
+counter = 1
 
 # Iterate over all possible parameter values
 for i, C_walls in enumerate(C_walls_list):
     for j, Q_heater in enumerate(Q_heater_list):
         for k, R_external in enumerate(R_external_list):
             house = House(C_air=C_air, 
-                                C_walls=C_walls, 
-                                R_internal=R_internal, 
-                                R_external=R_external, 
-                                Q_heater=Q_heater, 
-                                min_temperature=min_temperature)
+                          C_walls=C_walls, 
+                          R_internal=R_internal, 
+                          R_external=R_external, 
+                          Q_heater=Q_heater, 
+                          min_temperature=min_temperature)
             
             optimal_state_df, baseline_state_df = compare_decision_costs(temp_price_df, house) 
             # Update the cost arrays
             optimal_cost[i, j, k] = optimal_state_df['Cost'].sum(min_count=1)
             baseline_cost[i, j, k] = baseline_state_df['Cost'].sum(min_count=1)
-            print(optimal_cost[i, j, k])
+            
+            # Print the counter
+            print(f"Processing iteration: {counter:03d}", end="\r")
+            counter += 1
 
 print("Arrays populated successfully")
 fig = plot_factor_analysis(optimal_cost,baseline_cost,
