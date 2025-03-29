@@ -60,55 +60,15 @@ def get_weather_data(time_range: Optional[pd.DatetimeIndex] = None, city: str = 
     
     data = response.json()
     weather_data = [(pd.Timestamp(entry['dt'], unit='s', tz='UTC').tz_convert('Europe/Madrid'),
-                     entry['main']['temp'] - 273.15) for entry in data['list']]
-    
-    df = pd.DataFrame(weather_data, columns=['Timestamp', 'Exterior Temperature'])
-    return interpolate_hourly_data(df, 24)
+                    entry['main']['temp'] - 273.15) for entry in data['list']]
 
-def get_historical_weather_data(time_range: Optional[pd.DatetimeIndex] = None, city: str = "Barcelona, ES") -> pd.DataFrame:
-    """Get historical weather data for a specified city. Examples: Barcelona, ES | Madrid, ES | Berlin, DE"""
-    api_key = get_weather_api_key()
-    
-    # Use geocoding API to get the latitude and longitude of the city
-    geocode_url = f"https://api.openweathermap.org/data/2.5/weather"
-    geocode_response = requests.get(
-        geocode_url, params={"q": city, "appid": api_key}
+    # Create a Series where the Timestamp is the index
+    temperature_series = pd.Series(
+        dict(weather_data),  # Convert the list of tuples to a dictionary
+        name='Exterior Temperature'  # Set the name of the series
     )
-    geocode_response.raise_for_status()
-    geocode_data = geocode_response.json()
-    
-    lat = geocode_data['coord']['lat']
-    lon = geocode_data['coord']['lon']
-    
-    # Define the time range
-    if time_range is None:
-        # Default to last 24 hours if no time range is provided
-        end_time = datetime.utcnow()
-        start_time = end_time - pd.Timedelta(hours=24)
-    else:
-        start_time, end_time = time_range[0], time_range[-1]
-    
-    start_timestamp = int(start_time.timestamp())
-    end_timestamp = int(end_time.timestamp())
-    
-    # Call the historical weather data API
-    historical_url = f"https://api.openweathermap.org/data/2.5/onecall/timemachine"
-    weather_data = []
-    
-    for timestamp in range(start_timestamp, end_timestamp, 3600):  # Loop through hourly timestamps
-        response = requests.get(
-            historical_url,
-            params={"lat": lat, "lon": lon, "dt": timestamp, "appid": api_key}
-        )
-        response.raise_for_status()
-        data = response.json()
-        weather_data.append((pd.Timestamp(data['current']['dt'], unit='s', tz='UTC').tz_convert('Europe/Madrid'),
-                             data['current']['temp'] - 273.15))  # Convert from Kelvin to Celsius
-    
-    df = pd.DataFrame(weather_data, columns=['Timestamp', 'Exterior Temperature'])
-    
-    # If necessary, interpolate missing hourly data
-    return df
+
+    return temperature_series
 
 def interpolate_hourly_data(df: pd.DataFrame, hours: int) -> pd.DataFrame:
     df = df.set_index('Timestamp').resample('h').interpolate()
@@ -133,10 +93,10 @@ def get_spain_electricity_prices(time_range: Optional[pd.DatetimeIndex] = None) 
         start = time_range[0]
         end = time_range[-1]
     
-    prices = client.query_day_ahead_prices('ES', start=start, end=end)
-    return (prices.to_frame(name='Price')
-            .reindex(time_range, method='nearest')
-            .assign(Price=lambda x: x['Price'] / 1000)) # convert price from EUR/MWh to EUR/kWh
+    price_series = client.query_day_ahead_prices('ES', start=start, end=end)
+    price_series.name = 'Price'
+    price_series = price_series.reindex(time_range, method='nearest') 
+    return price_series # convert price from EUR/MWh to EUR/kWh
 
-def get_prices(time_range: Optional[pd.DatetimeIndex] = None) -> pd.DataFrame: #TODO: expand to other countries
+def get_price_series(time_range: Optional[pd.DatetimeIndex] = None) -> pd.Series: #TODO: expand to other countries
     return get_spain_electricity_prices(time_range = time_range)

@@ -1,6 +1,6 @@
 from strom import optimization_utils
-from strom.api_utils import read_api_key as get_api_key, get_weather_data, get_historical_weather_data, get_prices
-from strom.data_utils import get_temp_price_df, join_data
+from strom.api_utils import read_api_key as get_api_key, get_weather_data, get_price_series
+from strom.data_utils import get_historical_weather_data, get_temp_price_df, join_data
 
 import numpy as np
 import pandas as pd
@@ -11,45 +11,42 @@ def test_get_api_key():
     assert api_key == 'test123'
 
 def test_get_weather_data():
-    temp_df = get_weather_data(city="Oslo")
-    assert temp_df.shape[1] == 1
+    temp_series = get_weather_data(city="Oslo")
     #check that all values are non nan
-    assert not temp_df.isnull().values.any()
+    assert not temp_series.isnull().values.any()
     #check that the dataframe has a column whose name is 'Exterior Temperature'
-    assert 'Exterior Temperature' in temp_df.columns
+    assert temp_series.name == 'Exterior Temperature'
 
 def test_get_weather_data_different_cities():
-    oslo_df = get_weather_data(city="Oslo")
-    bergen_df = get_weather_data(city="Bergen")
+    oslo_series = get_weather_data(city="Oslo")
+    bergen_series = get_weather_data(city="Bergen")
     
-    assert oslo_df.shape == bergen_df.shape
-    assert not oslo_df['Exterior Temperature'].equals(bergen_df['Exterior Temperature'])
-    assert oslo_df.shape[1] == 1
+    assert len(oslo_series) == len(bergen_series)
+    assert not oslo_series.equals(bergen_series)
 
 def test_get_historical_weather_data():
-    end = pd.Timestamp.now(tz='Europe/Madrid')
-    start = end - pd.Timedelta(days=29)
-    time_range = pd.date_range(start=start, end=end, freq='d', tz='Europe/Madrid')
+    temp_df = get_historical_weather_data()
 
-    temp_df = get_historical_weather_data(time_range=time_range)
-
+def test_get_price_data():
+    price_series = get_price_series()
 
 def test_get_historical_price_data():
     end = pd.Timestamp.now(tz='Europe/Madrid')
     start = end - pd.Timedelta(days=29)
     time_range = pd.date_range(start=start, end=end, freq='d', tz='Europe/Madrid')
 
-    price_df = get_prices(time_range=time_range)
-    assert price_df.shape[0] == 30
+    price_series = get_price_series(time_range=time_range)
+    assert len(price_series) == 30
 
 def test_join_data():
-    weather_df = get_weather_data(city="Oslo")
-    prices_df = get_prices()
+    temp_series = get_weather_data(city="Oslo")
+    price_series = get_price_series()
 
-    df = join_data(weather_df, prices_df)
+    df = join_data(temp_series, price_series)
     assert df.shape[1] == 2
     assert 'Exterior Temperature' in df.columns
     assert 'Price' in df.columns
+    assert df.isnull().values.any() == False
 
 def test_get_temp_price_df():
     temp_price_df = get_temp_price_df()
