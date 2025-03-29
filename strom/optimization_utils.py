@@ -107,36 +107,3 @@ def compare_output_costs(temp_price_df,house):
     baseline_state_df = find_heating_output(temp_price_df, house, "baseline")
 
     return optimal_state_df, baseline_state_df
-
-def get_state_df(temp_price_df, output, house):
-    
-    # time steps is the length of the time index resulting from starting at the first time and going to the last time in steps of dt
-    state_df = temp_price_df.copy()  # Make a copy of the dataframe
-    state_df['Heater Output'] = output
-    if house.freq == 'min':
-        state_df = state_df.resample('min').interpolate(method='cubic')
-        dt = 1.0/60
-    elif house.freq == 'h':
-        dt = 1.0
-    
-    time_steps = len(state_df)
-
-    T_interior = np.zeros(time_steps)
-    wall_temperature = np.zeros(time_steps)
-
-    T_interior[0] = house.T_interior_init
-    wall_temperature[0] = house.T_wall_init
-
-    for t in range(time_steps - 1):
-        heat_loss_air = (T_interior[t] - wall_temperature[t]) / house.R_interior
-        heat_loss_wall = (wall_temperature[t] - state_df['Exterior Temperature'][t]) / house.R_exterior
-        
-        T_interior[t + 1] = T_interior[t] + dt * (house.Q_heater * state_df['Heater Output'][t] - heat_loss_air) / house.C_air
-        wall_temperature[t + 1] = wall_temperature[t] + dt * (heat_loss_air - heat_loss_wall) / house.C_wall
-
-    # Calculate the cost of the baseline output
-    state_df['Cost'] = state_df['Price'] * dt * state_df['Heater Output'] * house.Q_heater
-    state_df['Wall Temperature'] = wall_temperature
-    state_df['Interior Temperature'] = T_interior
-
-    return state_df

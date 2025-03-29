@@ -55,19 +55,6 @@ def test_get_temp_price_df():
     #check that the period is 1 hour for each row
     assert temp_price_df.index.to_series().diff().dropna().eq(pd.Timedelta(hours=1)).all()
 
-def test_get_state_df():
-    temp_price_df = get_temp_price_df()
-    time_steps = len(temp_price_df)
-    # make a output function that is a sine wave array
-    output = np.sin(np.linspace(0, 5*2*np.pi, time_steps))
-    #make the sine wave into a square wave between 0 and 1
-    output = np.sign(output)
-    output = (output + 1) / 2
-
-    house = optimization_utils.House()
-    state = optimization_utils.get_state_df(temp_price_df, output, house)
-    assert state.shape[0] == time_steps
-
 def test_compare_output_costs():
     temp_price_df = get_temp_price_df()
     house = optimization_utils.House(P_base=0.0)
