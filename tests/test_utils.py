@@ -3,6 +3,7 @@ from strom.api_utils import read_api_key as get_api_key, get_weather_data, get_p
 from strom.data_utils import get_temp_price_df, join_data
 
 import numpy as np
+import pandas as pd
 
 def test_get_api_key():
     test_key_path = './tests/test_price_api_key.txt'
@@ -24,6 +25,14 @@ def test_get_weather_data_different_cities():
     assert oslo_df.shape == bergen_df.shape
     assert not oslo_df['Exterior Temperature'].equals(bergen_df['Exterior Temperature'])
     assert oslo_df.shape[1] == 1
+
+def test_get_historical_price_data():
+    end = pd.Timestamp.now(tz='Europe/Madrid')
+    start = end - pd.Timedelta(days=29)
+    time_range = pd.date_range(start=start, end=end, freq='d', tz='Europe/Madrid')
+
+    price_df = get_prices(time_range=time_range)
+    assert price_df.shape[0] == 30
 
 def test_join_data():
     weather_df = get_weather_data(city="Oslo")

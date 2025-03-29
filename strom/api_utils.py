@@ -76,22 +76,25 @@ def interpolate_hourly_data(df: pd.DataFrame, hours: int) -> pd.DataFrame:
     df = df.reindex(time_range).interpolate()
     return df.bfill() if df.isnull().values.any() else df
 
-def get_spain_electricity_prices() -> pd.DataFrame:
+def get_spain_electricity_prices(time_range: Optional[pd.DatetimeIndex] = None) -> pd.DataFrame:
     price_api_key = os.getenv('PRICE_API_KEY') or read_api_key('./config/price_api_key.txt')
     client = EntsoePandasClient(api_key=price_api_key)
     
-    start = pd.Timestamp.now(tz='Europe/Madrid')
-    end = start + pd.Timedelta(hours=24)
-    time_range = pd.date_range(start=start, end=end, freq='h', tz='Europe/Madrid')
+    if time_range is None:
+        start = pd.Timestamp.now(tz='Europe/Madrid')
+        end = start + pd.Timedelta(hours=24)
+        time_range = pd.date_range(start=start, end=end, freq='h', tz='Europe/Madrid')
+    else:
+        start = time_range[0]
+        end = time_range[-1]
     
     prices = client.query_day_ahead_prices('ES', start=start, end=end)
     return (prices.to_frame(name='Price')
             .reindex(time_range, method='nearest')
-            .head(24)
-            .assign(Price=lambda x: x['Price'] / 1000))
+            .assign(Price=lambda x: x['Price'] / 1000)) # convert price from EUR/MWh to EUR/kWh
+
+def get_prices(time_range: Optional[pd.DatetimeIndex] = None) -> pd.DataFrame: #TODO: expand to other countries
+    return get_spain_electricity_prices(time_range = time_range)
 
 def get_weather_data(city: str = "Barcelona, ES") -> pd.DataFrame:
     return fetch_city_weather(city)
-
-def get_prices() -> pd.DataFrame:
-    return get_spain_electricity_prices()
