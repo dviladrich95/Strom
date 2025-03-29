@@ -24,6 +24,9 @@ def test_get_weather_data_different_cities():
     assert len(oslo_series) == len(bergen_series)
     assert not oslo_series.equals(bergen_series)
 
+def test_prepush_hook():
+    assert 1==0
+
 def test_get_price_data():
     price_series = get_price_series()
 
