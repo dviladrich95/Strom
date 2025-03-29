@@ -1,6 +1,6 @@
 
 from strom.api_utils import get_price_series
-from strom.data_utils import join_data
+from strom.data_utils import join_data, regularize_df
 from strom.optimization_utils import House, compare_output_costs, plot_combined_cases
 
 import pandas as pd
@@ -12,9 +12,10 @@ temp_df['Timestamp'] = pd.to_datetime(temp_df['datetimeEpoch'], unit='s').dt.tz_
 temp_df.set_index('Timestamp', inplace=True)
 temperature_series = temp_df['Exterior Temperature']
 time_range = temperature_series.index
-price_df = get_price_series(time_range=time_range)
+price_series = get_price_series(time_range=time_range)
 price_now_df = get_price_series()
-price_temp_df = join_data(temp_df, price_df)
+temp_price_df = join_data(temperature_series, price_series)
+temp_price_df = regularize_df(temp_price_df)
 
 house = House(
     C_air = 0.56,
@@ -27,7 +28,7 @@ house = House(
     T_interior_init = 18.5,
     T_wall_init = 18.5,
     P_base = 0.01,
-    freq = 'min')
+    freq = 'h')
 
 optimal_state_df, baseline_state_df = compare_output_costs(temp_price_df,house)
 
