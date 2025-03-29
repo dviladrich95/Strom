@@ -42,14 +42,3 @@ def get_temp_price_df():
     temp_price_df = join_data(temp_series, prices_series)
     temp_price_df = regularize_df(temp_price_df)
     return temp_price_df
-
-
-def get_historical_weather_data() -> pd.DataFrame:
-    # Load the CSV file
-    df = pd.read_csv('data/Temp_Barcelona_Nov.csv')
-
-    # Convert the 'datetimeEpoch' column to pandas Timestamp
-    df['datetimeEpoch'] = pd.to_datetime(df['datetimeEpoch'], unit='s')
-    df.rename(columns={'datetimeEpoch': 'Timestamp'}, inplace=True)
-    df.rename(columns={'temp': 'Exterior Temperature'}, inplace=True)
-    return df

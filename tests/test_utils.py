@@ -1,6 +1,6 @@
 from strom import optimization_utils
 from strom.api_utils import read_api_key as get_api_key, get_weather_data, get_price_series
-from strom.data_utils import get_historical_weather_data, get_temp_price_df, join_data
+from strom.data_utils import get_temp_price_df, join_data
 
 import numpy as np
 import pandas as pd
@@ -23,9 +23,6 @@ def test_get_weather_data_different_cities():
     
     assert len(oslo_series) == len(bergen_series)
     assert not oslo_series.equals(bergen_series)
-
-def test_get_historical_weather_data():
-    temp_df = get_historical_weather_data()
 
 def test_get_price_data():
     price_series = get_price_series()
