@@ -1,12 +1,10 @@
 beautifulsoup4==4.13.3
-chardet==5.2.0
-cvxpy==1.6.0
-entsoe_py==0.6.18
+cvxpy==1.6.4
 kasa==0.0.3
 matplotlib==3.10.1
 numpy==2.2.4
 pandas==2.2.3
-plotly==6.0.0
+plotly==6.0.1
 python-dotenv==1.1.0
 Requests==2.32.3
 setuptools==65.5.0
