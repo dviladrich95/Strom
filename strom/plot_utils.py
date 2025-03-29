@@ -119,7 +119,7 @@ def plot_combined_cases(state_opt_df, state_base_df, plot_heater_output=True, pl
         ax.legend(
             legend_text, 
             loc='lower left', 
-            bbox_to_anchor=(0.25*i, 1.01), 
+            bbox_to_anchor=(0.30*i, 1.01), 
             ncol=len(legend_text),
             prop={'size': 10}
         )
