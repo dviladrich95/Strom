@@ -30,6 +30,7 @@ def find_heating_output(temp_price_df, house, heating_mode):
     using explicit Euler integration for thermal dynamics.
     """
     state_df = temp_price_df.copy()  # Make a copy of the dataframe
+    state_df = state_df.resample(house.freq).interpolate(method='cubic')
     state_df['Price'] = temp_price_df['Price'] + house.P_base  # Add custom tolls and taxes
 
     freq_timedelta = pd.to_timedelta(house.freq)
