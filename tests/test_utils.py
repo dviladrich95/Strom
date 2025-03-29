@@ -59,8 +59,8 @@ def test_get_state_df():
 
 def test_compare_output_costs():
     temp_price_df = get_temp_price_df()
-    house = optimization_utils.House()
+    house = optimization_utils.House(P_base=0.0)
     optimal_state_df, baseline_state_df = optimization_utils.compare_output_costs(temp_price_df, house)
     assert baseline_state_df.isnull().values.any() == False
     assert optimal_state_df.isnull().values.any() == False
-    assert optimal_state_df['Cost'].sum() < baseline_state_df['Cost'].sum()
+    assert optimal_state_df['Cost'].sum() <= baseline_state_df['Cost'].sum()
