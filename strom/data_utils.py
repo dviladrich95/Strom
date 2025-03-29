@@ -26,3 +26,15 @@ def get_temp_price_df():
     temp_price_df = join_data(temp_series, prices_series)
     temp_price_df = regularize_df(temp_price_df)
     return temp_price_df
+
+def get_temp_price_from_temp(temp_df):
+    temp_df.rename(columns={'temp': 'Exterior Temperature'}, inplace=True)
+    temp_df['Timestamp'] = pd.to_datetime(temp_df['datetimeEpoch'], unit='s').dt.tz_localize('Europe/Madrid')
+    temp_df.set_index('Timestamp', inplace=True)
+    temperature_series = temp_df['Exterior Temperature']
+    time_range = temperature_series.index
+    price_series = get_price_series(time_range=time_range)
+    price_now_df = get_price_series()
+    temp_price_df = join_data(temperature_series, price_series)
+    temp_price_df = regularize_df(temp_price_df)
+    return temp_price_df
