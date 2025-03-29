@@ -16,25 +16,9 @@ def join_data(temp_series, price_series):
     return temp_price_df
 
 def regularize_df(df):
-
     df_resamp = df.resample('1h').asfreq()
-    # make a new dataframe without any columns
-    df_resamp = df_resamp.drop(columns = df_resamp.columns)
-
-    #merge dataframes
-    merged_df = pd.merge(df_resamp, df, left_index=True, right_index=True, how='outer')
-    #interpolate the missing values
-    merged_df = merged_df.interpolate(method='cubic')
-
-    #extrapolate the missing values
-    merged_df = merged_df.interpolate(method='cubic', limit_direction='both')
-    # take only the rows with indices present in the resampled dataframe
-    merged_df = merged_df[merged_df.index.isin(df_resamp.index)]
-
-    #remove rows with Nan
-    merged_df = merged_df.dropna()
+    merged_df = df_resamp.interpolate(method='cubic', limit_direction='both').bfill().ffill()
     return merged_df
-
 
 def get_temp_price_df():
     temp_series = get_weather_data()
