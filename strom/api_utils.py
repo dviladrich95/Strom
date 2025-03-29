@@ -65,6 +65,51 @@ def get_weather_data(time_range: Optional[pd.DatetimeIndex] = None, city: str = 
     df = pd.DataFrame(weather_data, columns=['Timestamp', 'Exterior Temperature'])
     return interpolate_hourly_data(df, 24)
 
+def get_historical_weather_data(time_range: Optional[pd.DatetimeIndex] = None, city: str = "Barcelona, ES") -> pd.DataFrame:
+    """Get historical weather data for a specified city. Examples: Barcelona, ES | Madrid, ES | Berlin, DE"""
+    api_key = get_weather_api_key()
+    
+    # Use geocoding API to get the latitude and longitude of the city
+    geocode_url = f"https://api.openweathermap.org/data/2.5/weather"
+    geocode_response = requests.get(
+        geocode_url, params={"q": city, "appid": api_key}
+    )
+    geocode_response.raise_for_status()
+    geocode_data = geocode_response.json()
+    
+    lat = geocode_data['coord']['lat']
+    lon = geocode_data['coord']['lon']
+    
+    # Define the time range
+    if time_range is None:
+        # Default to last 24 hours if no time range is provided
+        end_time = datetime.utcnow()
+        start_time = end_time - pd.Timedelta(hours=24)
+    else:
+        start_time, end_time = time_range[0], time_range[-1]
+    
+    start_timestamp = int(start_time.timestamp())
+    end_timestamp = int(end_time.timestamp())
+    
+    # Call the historical weather data API
+    historical_url = f"https://api.openweathermap.org/data/2.5/onecall/timemachine"
+    weather_data = []
+    
+    for timestamp in range(start_timestamp, end_timestamp, 3600):  # Loop through hourly timestamps
+        response = requests.get(
+            historical_url,
+            params={"lat": lat, "lon": lon, "dt": timestamp, "appid": api_key}
+        )
+        response.raise_for_status()
+        data = response.json()
+        weather_data.append((pd.Timestamp(data['current']['dt'], unit='s', tz='UTC').tz_convert('Europe/Madrid'),
+                             data['current']['temp'] - 273.15))  # Convert from Kelvin to Celsius
+    
+    df = pd.DataFrame(weather_data, columns=['Timestamp', 'Exterior Temperature'])
+    
+    # If necessary, interpolate missing hourly data
+    return df
+
 def interpolate_hourly_data(df: pd.DataFrame, hours: int) -> pd.DataFrame:
     df = df.set_index('Timestamp').resample('h').interpolate()
     

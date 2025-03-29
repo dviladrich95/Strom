@@ -1,5 +1,5 @@
 from strom import optimization_utils
-from strom.api_utils import read_api_key as get_api_key, get_weather_data, get_prices
+from strom.api_utils import read_api_key as get_api_key, get_weather_data, get_historical_weather_data, get_prices
 from strom.data_utils import get_temp_price_df, join_data
 
 import numpy as np
@@ -25,6 +25,14 @@ def test_get_weather_data_different_cities():
     assert oslo_df.shape == bergen_df.shape
     assert not oslo_df['Exterior Temperature'].equals(bergen_df['Exterior Temperature'])
     assert oslo_df.shape[1] == 1
+
+def test_get_historical_weather_data():
+    end = pd.Timestamp.now(tz='Europe/Madrid')
+    start = end - pd.Timedelta(days=29)
+    time_range = pd.date_range(start=start, end=end, freq='d', tz='Europe/Madrid')
+
+    temp_df = get_historical_weather_data(time_range=time_range)
+
 
 def test_get_historical_price_data():
     end = pd.Timestamp.now(tz='Europe/Madrid')
