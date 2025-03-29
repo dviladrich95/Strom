@@ -15,8 +15,8 @@ def join_data(temp_series, price_series):
     temp_price_df = temp_price_df.interpolate(method='cubic').bfill().ffill()
     return temp_price_df
 
-def regularize_df(df):
-    df_resamp = df.resample('1h').asfreq()
+def regularize_df(df, freq = '1h'):
+    df_resamp = df.resample(freq).asfreq()
     merged_df = df_resamp.interpolate(method='cubic', limit_direction='both').bfill().ffill()
     return merged_df
 
