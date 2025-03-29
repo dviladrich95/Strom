@@ -1,7 +1,8 @@
 
 from strom.api_utils import get_price_series
 from strom.data_utils import join_data, regularize_df
-from strom.optimization_utils import House, compare_output_costs, plot_combined_cases
+from strom.optimization_utils import House, compare_output_costs
+from strom.plot_utils import plot_combined_cases
 
 import pandas as pd
 import matplotlib.pyplot as plt
