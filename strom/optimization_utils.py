@@ -78,7 +78,7 @@ def find_heating_output(temp_price_df, house, heating_mode):
     
     # Solve optimization problem
     problem = cp.Problem(objective, constraints)
-    problem.solve()
+    problem.solve(verbose=True)
 
     # Check if an optimal solution was found
     if problem.status == cp.OPTIMAL:
