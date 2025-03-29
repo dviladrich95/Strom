@@ -42,7 +42,7 @@ def get_weather_api_key() -> str:
     os.chdir(find_root_dir())
     return read_api_key('./config/weather_api_key.txt')
 
-def fetch_city_weather(city: str = "Barcelona, ES") -> pd.DataFrame:
+def get_weather_data(time_range: Optional[pd.DatetimeIndex] = None, city: str = "Barcelona, ES") -> pd.DataFrame:
     """Get weather for specified city. Examples: Barcelona, ES | Madrid, ES | Berlin, DE"""
     api_key = get_weather_api_key()
     
@@ -95,6 +95,3 @@ def get_spain_electricity_prices(time_range: Optional[pd.DatetimeIndex] = None) 
 
 def get_prices(time_range: Optional[pd.DatetimeIndex] = None) -> pd.DataFrame: #TODO: expand to other countries
     return get_spain_electricity_prices(time_range = time_range)
-
-def get_weather_data(city: str = "Barcelona, ES") -> pd.DataFrame:
-    return fetch_city_weather(city)
