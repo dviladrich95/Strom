@@ -53,7 +53,7 @@ def test_get_temp_price_df():
     #check that there are no nan values
     assert temp_price_df.isnull().values.any() == False
     #check that the period is 1 hour for each row
-    assert (temp_price_df.index[1] - temp_price_df.index[0]).seconds == 3600
+    assert temp_price_df.index.to_series().diff().dropna().eq(pd.Timedelta(hours=1)).all()
 
 def test_get_state_df():
     temp_price_df = get_temp_price_df()
