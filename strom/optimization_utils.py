@@ -14,7 +14,7 @@ class House:
     def __init__(self, C_air=0.56, C_wall=3.5, R_interior=1.0,
                 R_exterior=6.06, Q_heater=2.0, T_min=18.0, 
                 T_max=24.0, T_interior_init = 18.5,
-                T_wall_init = 18.5, P_base = 0.05,  freq='1h'):
+                T_wall_init = 18.5, P_base = 0.01,  freq='1h'):
         
         self.C_air = C_air
         self.C_wall = C_wall
