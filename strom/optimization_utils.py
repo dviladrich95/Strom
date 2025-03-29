@@ -4,21 +4,7 @@ import cvxpy as cp
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 
-import requests
-from datetime import datetime
-
-import os
-import xml.etree.ElementTree as ET
-from entsoe import EntsoePandasClient
-
 from strom import data_utils
-from strom import api_utils
-
-def get_temp_price_df():
-    temp_df = data_utils.get_temp_series()
-    prices_df = data_utils.get_price_series()
-    temp_price_df = data_utils.join_data(temp_df, prices_df)
-    return temp_price_df
 
 # parameters estimated from https://protonsforbreakfast.wordpress.com/2022/12/19/estimating-the-heat-capacity-of-my-house/
 # C_ air = 0.15*C_wall
@@ -28,7 +14,7 @@ class House:
     def __init__(self, C_air=0.56, C_wall=3.5, R_interior=1.0,
                 R_exterior=6.06, Q_heater=2.0, T_min=18.0, 
                 T_max=24.0, T_interior_init = 18.5,
-                T_wall_init = 18.5, P_base = 0.05,  freq='h'):
+                T_wall_init = 18.5, P_base = 0.05,  freq='1h'):
         
         self.C_air = C_air
         self.C_wall = C_wall
@@ -42,10 +28,6 @@ class House:
         self.T_wall_init = T_wall_init
         self.P_base = P_base
 
-
-import cvxpy as cp
-import numpy as np
-
 def find_heating_output(temp_price_df, house, heating_mode):
     """
     Determines the optimal heating output for a given day based on exterior temperature and electricity price,
@@ -54,11 +36,8 @@ def find_heating_output(temp_price_df, house, heating_mode):
     state_df = temp_price_df.copy()  # Make a copy of the dataframe
     state_df['Price'] = temp_price_df['Price'] + house.P_base  # Add custom tolls and taxes
 
-    if house.freq == 'min':
-        state_df = state_df.resample('min').interpolate(method='cubic')
-        dt = 1.0/60
-    elif house.freq == 'h':
-        dt = 1.0
+    freq_timedelta = pd.to_timedelta(house.freq)
+    dt = freq_timedelta.total_seconds() / 3600.0  # Convert to hours
 
     time_steps = len(state_df)
     T_exterior = state_df["Exterior Temperature"]
@@ -120,8 +99,6 @@ def find_heating_output(temp_price_df, house, heating_mode):
         state_df['Cost'] = np.full(time_steps, np.nan)
     
     return state_df
-
-
 
 def compare_output_costs(temp_price_df,house):
         
