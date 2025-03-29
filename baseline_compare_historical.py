@@ -35,7 +35,7 @@ optimal_state_df, baseline_state_df = compare_output_costs(temp_price_df,house)
 
 fig = plot_combined_cases(optimal_state_df, baseline_state_df)
 # Save as png
-fig.savefig("./plots/compare_costs_temps.png")
+fig.savefig("./plots/compare_costs_temps_Barcelona_Nov.png")
 
 #show the plot
 plt.show()
