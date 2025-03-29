@@ -95,8 +95,9 @@ def get_spain_electricity_prices(time_range: Optional[pd.DatetimeIndex] = None) 
     
     price_series = client.query_day_ahead_prices('ES', start=start, end=end)
     price_series.name = 'Price'
-    price_series = price_series.reindex(time_range, method='nearest') 
-    return price_series # convert price from EUR/MWh to EUR/kWh
+    price_series = price_series.reindex(time_range, method='nearest')
+    price_series = price_series/1000.0  # convert price from EUR/MWh to EUR/kWh
+    return price_series
 
 def get_price_series(time_range: Optional[pd.DatetimeIndex] = None) -> pd.Series: #TODO: expand to other countries
     return get_spain_electricity_prices(time_range = time_range)
