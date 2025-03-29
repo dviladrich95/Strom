@@ -7,7 +7,7 @@ from strom.plot_utils import plot_combined_cases
 import pandas as pd
 import matplotlib.pyplot as plt
 
-temp_price_df = pd.read_csv('data/Temp_Price_Barcelona_Nov.csv')
+temp_price_df = pd.read_csv('data/Temp_Price_Barcelona_Nov.csv', index_col="Timestamp", parse_dates=["Timestamp"])
 
 house = House(
     C_air = 0.56,
