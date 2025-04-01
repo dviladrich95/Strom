@@ -7,30 +7,36 @@ def plot_combined_cases(state_opt_df, state_base_df, plot_heater_output=True, pl
     fig, (ax_temp, ax_cost) = plt.subplots(2, 1, figsize=(14, 8), 
                                               gridspec_kw={'height_ratios': [3, 1]}, sharex= True)
     
+
     # Single temperature axis
+    legends_temp = []
     color = 'tab:red'
     ax_temp.set_ylabel('Temperature (°C)')
-    ax_temp.plot(state_opt_df['Interior Temperature'], color=color, linestyle='-', label='Optimal Interior Temp')
-    ax_temp.plot(state_base_df['Interior Temperature'], color=color, linestyle='--', label='Baseline Interior Temp')
+    ax_temp.plot(state_opt_df['InteriorTemperature'], color=color, linestyle='-', label='Optimal Interior Temp')
+    ax_temp.plot(state_base_df['InteriorTemperature'], color=color, linestyle='--', label='Baseline Interior Temp')
     
     # Optional additional temperature plots
     if plot_wall_temp:
         color = 'tab:brown'
-        ax_temp.plot(state_opt_df['Wall Temperature'], color=color, linestyle='-', label='Optimal Wall Temp')
-        ax_temp.plot(state_base_df['Wall Temperature'], color=color, linestyle='--', label='Baseline Wall Temp')
+        ax_temp.plot(state_opt_df['WallTemperature'], color=color, linestyle='-', label='Optimal Wall Temp')
+        ax_temp.plot(state_base_df['WallTemperature'], color=color, linestyle='--', label='Baseline Wall Temp')
     
     if plot_T_exterior:
         color = 'tab:pink'
-        ax_temp.plot(state_opt_df['Exterior Temperature'], color=color, linestyle='-', label='Exterior Temp')
+        ax_temp.plot(state_opt_df['ExteriorTemperature'], color=color, linestyle='-', label='Exterior Temp')
+
+    legends_temp = [(ax_temp.get_legend_handles_labels()[1], ax_temp, 'tab:red')]
 
     # Always plot cost on the first axis
-    color = 'tab:blue'
+    legends_cost = []
+    color = 'tab:green'
     ax_cost.set_xlabel('Time (h)')
     ax_cost.set_ylabel('Cost (€)', color=color)
-    ax_cost.plot(state_opt_df['Cost'].cumsum(), color=color, linestyle='-')
-    ax_cost.plot(state_base_df['Cost'].cumsum(), color=color, linestyle='--')
+    ax_cost.plot(state_opt_df['Cost'].cumsum(), color=color, linestyle='-', label='Optimal Cost')
+    ax_cost.plot(state_base_df['Cost'].cumsum(), color=color, linestyle='--', label='Baseline Cost')
     ax_cost.tick_params(axis='y', labelcolor=color)
     ax_cost.tick_params(axis='x', rotation=45)
+    legends_cost.append((ax_cost.get_legend_handles_labels()[1], ax_cost, 'tab:green'))
 
     # Price Axis (if needed)
     if plot_price:
@@ -39,26 +45,28 @@ def plot_combined_cases(state_opt_df, state_base_df, plot_heater_output=True, pl
         ax_price.plot(state_opt_df['Price'], color=color)
         ax_price.set_ylabel('Price (€/kWh)', color=color)
         ax_price.tick_params(axis='y', labelcolor=color)
+        legends_cost.append((['Price'], ax_price, color))
 
-    # Heater Output Subplot (if plot_heater_output is True)
-    if plot_heater_output:
+    if plot_heater_output or plot_cooling_output:
+        # Heater Output Subplot (if plot_heater_output is True)
         ax_heater = ax_cost.twinx()
-        color = 'tab:green'
         ax_heater.spines["right"].set_position(("outward", 60))
-        ax_heater.plot(state_opt_df['Heater Output']*100, color=color, linestyle='-', label='Optimal Heater Output')
-        ax_heater.plot(state_base_df['Heater Output']*100, color=color, linestyle='--', label='Baseline Heater Output')
-        ax_heater.set_ylabel('Heater Output (%)', color=color)
-        ax_heater.tick_params(axis='y', labelcolor=color)
+        ax_heater_label = []
+        if plot_heater_output:
+            color = 'tab:red'
+            ax_heater.plot(state_opt_df['HeaterOutput']*100, color=color, linestyle='-', label='Optimal Heater Output')
+            ax_heater.plot(state_base_df['HeaterOutput']*100, color=color, linestyle='--', label='Baseline Heater Output')
+            ax_heater_label.append('Heater')
 
-    # Legend setup
-    legends_temp = [(ax_temp.get_legend_handles_labels()[1], ax_temp, 'tab:red')]
-    legends_cost = [(['Optimal Cost', 'Baseline Cost'], ax_cost, 'tab:blue')]
+        # Heater Output Subplot (if plot_heater_output is True)
+        if plot_cooling_output:
+            color = 'tab:blue'
+            ax_heater.plot(state_opt_df['CoolingOutput']*100, color=color, linestyle='-', label='Optimal Cooling Output')
+            ax_heater.plot(state_base_df['CoolingOutput']*100, color=color, linestyle='--', label='Baseline Cooling Output')
+            ax_heater_label.append('Cooling')
 
-    if plot_price:
-        legends_cost.append((['Price'], ax_price, 'tab:grey'))
-    
-    if plot_heater_output:
-        legends_cost.append((['Optimal Heater Output', 'Baseline Heater Output'], ax_heater, 'tab:green'))
+        ax_heater.set_ylabel('/'.join(ax_heater_label)+' Output (%)')
+        legends_cost.append((ax_heater.get_legend_handles_labels()[1], ax_heater, 'tab:red'))
 
     # Place temp legends
     for i, (legend_text, ax, color) in enumerate(legends_temp):
