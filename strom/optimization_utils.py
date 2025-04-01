@@ -79,11 +79,14 @@ def find_heating_output(temp_price_df, house, heating_mode):
     constraints.append(T[0, :] >= house.T_min)  # Interior temperature constraint
     constraints.append(T[0, :] <= house.T_max)  # Interior temperature constraint
     
-    # Objective function
+    # Objective functions for different scenarios
+    obj_cost = cp.sum(cp.multiply(state_df["Price"], dt * ((house.Q_heater +1e-4) * heater_output+(house.Q_cooling +1e-4) *cooling_output) ))
+    obj_temp = cp.sum(cp.square(house.T_min - T[0, :]))  # Interior temperature squared error
+    tau = 0.01
     if heating_mode == "optimal":
-        obj = cp.sum(cp.multiply(state_df["Price"], dt * (house.Q_heater * heater_output+house.Q_cooling *cooling_output) ))
+        obj = obj_cost
     elif heating_mode == "baseline":
-        obj = cp.sum(cp.square(house.T_min - T[0, :]))  # Interior temperature squared error
+        obj = (1-tau)*obj_temp + tau*obj_cost # add a small amount of cost sensitivity to avoid unrealistic heater + cooling scenarios
     objective = cp.Minimize(obj)
     
     # Solve optimization problem
