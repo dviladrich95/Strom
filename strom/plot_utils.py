@@ -2,51 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 
-
-def plot_state(state_df, case_label, plot_price=True):
-    """
-    Plots the costs, temperatures, and heater output for a single case (e.g., Baseline or Optimal).
-    Args:
-        compare_df (pd.DataFrame): DataFrame containing the costs, temperatures, and heater output.
-        case_label (str): Label for the case being plotted (e.g., 'Baseline' or 'Optimal').
-    Returns:
-        fig, ax1, ax2, ax3: Matplotlib figure and axes objects.
-    """
-    fig, ax1 = plt.subplots()
-
-    color = 'tab:blue'
-    ax1.set_xlabel('Time (h)')
-    ax1.set_ylabel(f'{case_label} Cost (€)', color=color)
-    ax1.plot(state_df['Cost'].cumsum(), color=color, linestyle='-')
-    ax1.tick_params(axis='y', labelcolor=color)
-    ax1.tick_params(axis='x', rotation=45)  # Rotate x-axis tick labels
-
-    ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
-
-    color = 'tab:red'
-    ax2.set_ylabel(f'{case_label} Interior Temperature', color=color)
-    ax2.plot(state_df['Interior Temperature'], color=color, linestyle='-')
-    ax2.tick_params(axis='y', labelcolor=color)
-
-    ax3 = ax1.twinx()
-    color = 'tab:green'
-    ax3.spines['right'].set_position(('outward', 60))
-    ax3.plot(state_df['Heater Output'], color=color, linestyle='-')
-    ax3.set_ylabel(f'{case_label} Heater Output', color=color)
-    ax3.tick_params(axis='y', labelcolor=color)
-
-    if plot_price:
-        ax4 = ax1.twinx()
-        color = 'tab:grey'
-        ax4.spines['right'].set_position(('outward', 120))
-        ax4.plot(state_df['Price'], color=color, linestyle='--')
-        ax4.set_ylabel('Price (€/kWh)', color=color)
-        ax4.tick_params(axis='y', labelcolor=color)
-
-    fig.tight_layout()  # otherwise the right y-label is slightly clipped
-    return fig 
-
-def plot_combined_cases(state_opt_df, state_base_df, plot_heater_output=True, plot_price=True, plot_T_exterior=True, plot_wall_temp=True):
+def plot_combined_cases(state_opt_df, state_base_df, plot_heater_output=True, plot_cooling_output=True, plot_price=True, plot_T_exterior=True, plot_wall_temp=True):
     # Determine the number of subplots based on heater output
     fig, (ax_temp, ax_cost) = plt.subplots(2, 1, figsize=(14, 8), 
                                               gridspec_kw={'height_ratios': [3, 1]}, sharex= True)
