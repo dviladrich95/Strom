@@ -10,7 +10,7 @@ baseline_state_df = pd.read_csv('data/baseline_state.csv', index_col='Timestamp'
 
 fig = plot_combined_cases(optimal_state_df, baseline_state_df)
 # Save as png
-fig.savefig("./plots/compare_costs_temps_Barcelona_Nov.png")
+fig.savefig("./plots/compare_costs_temps_Barcelona_Mar23_Mar25.png")
 
 #show the plot
 plt.show()
