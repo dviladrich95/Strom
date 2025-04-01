@@ -65,7 +65,7 @@ def plot_combined_cases(state_opt_df, state_base_df, plot_heater_output=True, pl
             ax_heater.plot(state_base_df['CoolingOutput']*100, color=color, linestyle='--', label='Baseline Cooling Output')
             ax_heater_label.append('Cooling')
 
-        ax_heater.set_ylabel('/'.join(ax_heater_label)+' Output (%)')
+        ax_heater.set_ylabel('/'.join(ax_heater_label)+' Output (%)', fontsize=8)
         legends_cost.append((ax_heater.get_legend_handles_labels()[1], ax_heater, 'tab:red'))
 
     # Place temp legends
