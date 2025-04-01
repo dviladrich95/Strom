@@ -94,13 +94,15 @@ def find_heating_output(temp_price_df, house, heating_mode):
     if problem.status == cp.OPTIMAL:
         # Add the output to the dataframe
         state_df['HeaterOutput'] = heater_output.value
+        state_df['CoolingOutput'] = cooling_output.value
         state_df['InteriorTemperature'] = T[0, :].value
         state_df['WallTemperature'] = T[1, :].value
-        state_df['Cost'] = state_df['Price'] * dt * state_df['HeaterOutput'] * house.Q_heater
+        state_df['Cost'] = state_df['Price'] * dt * (state_df['HeaterOutput'] * house.Q_heater + state_df['CoolingOutput'] * house.Q_cooling)
     else:
         print("No optimal solution found.")
         # Fill with NaN arrays
         state_df['HeaterOutput'] = np.full(time_steps, np.nan)
+        state_df['CoolingOutput'] = np.full(time_steps, np.nan)
         state_df['InteriorTemperature'] = np.full(time_steps, np.nan)
         state_df['WallTemperature'] = np.full(time_steps, np.nan)
         state_df['Cost'] = np.full(time_steps, np.nan)
