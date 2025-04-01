@@ -39,7 +39,7 @@ def find_heating_output(temp_price_df, house, heating_mode):
     dt = freq_timedelta.total_seconds() / 3600.0  # Convert to hours
 
     time_steps = len(state_df)
-    T_exterior = state_df["Exterior Temperature"]
+    T_exterior = state_df["ExteriorTemperature"]
     
     # Initialize CVXPY variables
     heater_output = cp.Variable(time_steps)
@@ -93,16 +93,16 @@ def find_heating_output(temp_price_df, house, heating_mode):
     # Check if an optimal solution was found
     if problem.status == cp.OPTIMAL:
         # Add the output to the dataframe
-        state_df['Heater Output'] = heater_output.value
-        state_df['Interior Temperature'] = T[0, :].value
-        state_df['Wall Temperature'] = T[1, :].value
-        state_df['Cost'] = state_df['Price'] * dt * state_df['Heater Output'] * house.Q_heater
+        state_df['HeaterOutput'] = heater_output.value
+        state_df['InteriorTemperature'] = T[0, :].value
+        state_df['WallTemperature'] = T[1, :].value
+        state_df['Cost'] = state_df['Price'] * dt * state_df['HeaterOutput'] * house.Q_heater
     else:
         print("No optimal solution found.")
         # Fill with NaN arrays
-        state_df['Heater Output'] = np.full(time_steps, np.nan)
-        state_df['Interior Temperature'] = np.full(time_steps, np.nan)
-        state_df['Wall Temperature'] = np.full(time_steps, np.nan)
+        state_df['HeaterOutput'] = np.full(time_steps, np.nan)
+        state_df['InteriorTemperature'] = np.full(time_steps, np.nan)
+        state_df['WallTemperature'] = np.full(time_steps, np.nan)
         state_df['Cost'] = np.full(time_steps, np.nan)
     
     return state_df

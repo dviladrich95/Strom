@@ -65,7 +65,7 @@ def get_weather_data(time_range: Optional[pd.DatetimeIndex] = None, city: str = 
     # Create a Series where the Timestamp is the index
     temperature_series = pd.Series(
         dict(weather_data),  # Convert the list of tuples to a dictionary
-        name='Exterior Temperature'  # Set the name of the series
+        name='ExteriorTemperature'  # Set the name of the series
     )
 
     return temperature_series

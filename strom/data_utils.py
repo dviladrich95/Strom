@@ -28,12 +28,12 @@ def get_temp_price_df():
     return temp_price_df
 
 def get_temp_price_from_temp(temp_df):
-    temp_df.rename(columns={'temp': 'Exterior Temperature'}, inplace=True)
+    temp_df.rename(columns={'temp': 'ExteriorTemperature'}, inplace=True)
     temp_df['Timestamp'] = pd.to_datetime(temp_df['datetimeEpoch'], unit='s').dt.tz_localize('Europe/Madrid', ambiguous='NaT', nonexistent='shift_forward')
     temp_df['Timestamp'] = temp_df['Timestamp'].dt.tz_convert('UTC') # UTC needed to avoid mistakes when loading from csv
     temp_df.set_index('Timestamp', inplace=True)
     temp_df = temp_df.groupby(temp_df.index).mean().resample('h').interpolate('time')
-    temp_series = temp_df['Exterior Temperature']
+    temp_series = temp_df['ExteriorTemperature']
     price_series = get_price_series(time_range=temp_series.index)
     temp_price_df = join_data(temp_series, price_series)
     return temp_price_df
