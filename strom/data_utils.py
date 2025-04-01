@@ -1,7 +1,7 @@
 import pandas as pd
-from .api_utils import get_weather_data, get_prices
+from .api_utils import get_weather_data, get_price_series
 
-def join_data(temp_df, prices_df):
+def join_data(temp_series, price_series):
     """
     Merge temperature and price dataframes on the 'Timestamp' column and extract temperature and prices as numpy arrays.
     Parameters:
@@ -10,37 +10,31 @@ def join_data(temp_df, prices_df):
     Returns:
     pd.DataFrame: Merged DataFrame containing both temperature and price data.
     """
-    
-    temp_df_reindexed = temp_df.reindex(prices_df.index.union(temp_df.index)).interpolate(method='time')
-    temp_df_reindexed = temp_df_reindexed.bfill().ffill()
-    temp_df_reindexed = temp_df_reindexed.reindex(prices_df.index)
-    temp_price_df = pd.merge(temp_df_reindexed, prices_df, left_index=True, right_index=True, how='inner')
+    temp_price_df = pd.concat([temp_series, price_series], axis=1)
+    temp_price_df.sort_index(inplace=True)
+    temp_price_df = temp_price_df.interpolate(method='cubic').bfill().ffill()
     return temp_price_df
 
-def regularize_df(df):
-
-    df_resamp = df.resample('1h').asfreq()
-    # make a new dataframe without any columns
-    df_resamp = df_resamp.drop(columns = df_resamp.columns)
-
-    #merge dataframes
-    merged_df = pd.merge(df_resamp, df, left_index=True, right_index=True, how='outer')
-    #interpolate the missing values
-    merged_df = merged_df.interpolate(method='cubic')
-
-    #extrapolate the missing values
-    merged_df = merged_df.interpolate(method='cubic', limit_direction='both')
-    # take only the rows with indices present in the resampled dataframe
-    merged_df = merged_df[merged_df.index.isin(df_resamp.index)]
-
-    #remove rows with Nan
-    merged_df = merged_df.dropna()
+def regularize_df(df, freq = '1h'):
+    df_resamp = df.resample(freq).asfreq()
+    merged_df = df_resamp.interpolate(method='cubic', limit_direction='both').bfill().ffill()
     return merged_df
 
-
 def get_temp_price_df():
-    temp_df = get_weather_data()
-    prices_df = get_prices()
-    temp_price_df = join_data(temp_df, prices_df)
+    temp_series = get_weather_data()
+    prices_series = get_price_series()
+    temp_price_df = join_data(temp_series, prices_series)
+    temp_price_df = regularize_df(temp_price_df)
+    return temp_price_df
+
+def get_temp_price_from_temp(temp_df):
+    temp_df.rename(columns={'temp': 'Exterior Temperature'}, inplace=True)
+    temp_df['Timestamp'] = pd.to_datetime(temp_df['datetimeEpoch'], unit='s').dt.tz_localize('Europe/Madrid')
+    temp_df.set_index('Timestamp', inplace=True)
+    temperature_series = temp_df['Exterior Temperature']
+    time_range = temperature_series.index
+    price_series = get_price_series(time_range=time_range)
+    price_now_df = get_price_series()
+    temp_price_df = join_data(temperature_series, price_series)
     temp_price_df = regularize_df(temp_price_df)
     return temp_price_df
