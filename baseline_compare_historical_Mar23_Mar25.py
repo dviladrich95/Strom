@@ -22,7 +22,6 @@ house = House(
     T_wall_init = 18.5,
     P_base = 0.01,
     freq = '15min',
-    cooling_unit = True
     )
 
 optimal_state_df, baseline_state_df = compare_output_costs(temp_price_df,house)
