@@ -25,6 +25,26 @@ class House:
         self.T_wall_init = T_wall_init
         self.P_base = P_base
 
+def smooth_temperature(data, window_hours, dt):
+    window_size = round(window_hours / dt)
+    
+    # Convert to pandas Series to use rolling mean
+    data_series = pd.Series(data)
+    
+    # Apply rolling mean with center alignment to avoid lag
+    smoothed = data_series.rolling(window=window_size, min_periods=1, center=True).mean()
+    
+    return smoothed.to_numpy()
+
+def calculate_baseline_target(ext_temp_series, T_min, T_max, resolution_hours):
+    # Smooth temperature over 24 hours
+    smoothed_ext = smooth_temperature(ext_temp_series, 24, resolution_hours)
+    
+    # Clip values to stay within [T_min, T_max]
+    target = np.clip(smoothed_ext, T_min, T_max)
+    
+    return target
+
 def find_heating_output(temp_price_df, house, heating_mode):
     """
     Determines the optimal heating output for a given day based on exterior temperature and electricity price,
@@ -40,7 +60,8 @@ def find_heating_output(temp_price_df, house, heating_mode):
 
     time_steps = len(state_df)
     T_exterior = state_df["ExteriorTemperature"]
-    
+    T_target = calculate_baseline_target(state_df["ExteriorTemperature"], house.T_min, house.T_max, dt)
+    T_differential = 0.2
     # Initialize CVXPY variables
     heater_output = cp.Variable(time_steps)
     cooling_output = cp.Variable(time_steps)
@@ -74,14 +95,16 @@ def find_heating_output(temp_price_df, house, heating_mode):
         ])
         constraints.append( T[0, t + 1] == T[0, t] + dt * (A[0,0] * T[0, t] + A[0,1] * T[1, t] + b_t[0]) )
         constraints.append( T[1, t + 1] == T[1, t] + dt * (A[1,0] * T[0, t] + A[1,1] * T[1, t] + b_t[1]) )
-    
-    # Minimum and maximum temperature constraint
+
     constraints.append(T[0, :] >= house.T_min)  # Interior temperature constraint
     constraints.append(T[0, :] <= house.T_max)  # Interior temperature constraint
-    
+
     # Objective functions for different scenarios
     obj_cost = cp.sum(cp.multiply(state_df["Price"], dt * ((house.Q_heater +1e-4) * heater_output+(house.Q_cooling +1e-4) *cooling_output) ))
-    obj_temp = cp.sum(cp.square(house.T_min - T[0, :]))  # Interior temperature squared error
+    # make a modified objective function of obj_temp that takes the maximum between the difference and 0
+    obj_temp = cp.sum(cp.abs(T[0, :] - (T_target - T_differential)) + cp.abs(T[0, :] - (T_target + T_differential)))
+
+
     tau = 0.01
     if heating_mode == "optimal":
         obj = obj_cost
@@ -91,7 +114,7 @@ def find_heating_output(temp_price_df, house, heating_mode):
     
     # Solve optimization problem
     problem = cp.Problem(objective, constraints)
-    problem.solve(verbose=True)
+    problem.solve(solver=cp.CLARABEL, verbose=True)
 
     # Check if an optimal solution was found
     if problem.status == cp.OPTIMAL:
@@ -119,7 +142,6 @@ def compare_output_costs(temp_price_df,house):
     """
 
     optimal_state_df  = find_heating_output(temp_price_df, house, "optimal")
-    #baseline_state_df = find_heating_output(temp_price_df, house, "hybrid")
     baseline_state_df = find_heating_output(temp_price_df, house, "baseline")
 
     return optimal_state_df, baseline_state_df

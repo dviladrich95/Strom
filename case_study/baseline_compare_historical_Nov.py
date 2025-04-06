@@ -1,10 +1,8 @@
-
-from strom.data_utils import get_temp_price_df
 from strom.optimization_utils import House, compare_output_costs
 from strom.plot_utils import plot_combined_cases
-import matplotlib.pyplot as plt
 
-temp_price_df = get_temp_price_df()
+import pandas as pd
+import matplotlib.pyplot as plt
 
 house = House(
     C_air = 0.56,
@@ -18,14 +16,20 @@ house = House(
     T_interior_init = 18.5,
     T_wall_init = 18.5,
     P_base = 0.01,
-    freq = '15min'
+    freq = '5min'
     )
+
+temp_price_df = pd.read_csv('data/Temp_Price_Barcelona_Nov.csv', index_col="Timestamp", parse_dates=["Timestamp"])
+
+# remove the first half of the data
+df_half = len(temp_price_df) // 2
+temp_price_df = temp_price_df[df_half:]
 
 optimal_state_df, baseline_state_df = compare_output_costs(temp_price_df,house)
 
 fig = plot_combined_cases(optimal_state_df, baseline_state_df)
 # Save as png
-fig.savefig("./plots/compare_costs_temps.png")
+fig.savefig("./plots/compare_costs_temps_Barcelona_Nov.png")
 
 #show the plot
 plt.show()

@@ -1,8 +1,9 @@
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 
-def plot_combined_cases(state_opt_df, state_base_df, plot_heater_output=True, plot_cooling_output=True, plot_price=True, plot_T_exterior=True, plot_wall_temp=True):
+def plot_combined_cases(state_opt_df, state_base_df, plot_heater_output=True, plot_cooling_output=False, plot_price=True, plot_T_exterior=True, plot_wall_temp=True):
     # Determine the number of subplots based on heater output
     fig, (ax_temp, ax_cost) = plt.subplots(2, 1, figsize=(14, 8), 
                                               gridspec_kw={'height_ratios': [3, 1]}, sharex= True)
@@ -27,25 +28,16 @@ def plot_combined_cases(state_opt_df, state_base_df, plot_heater_output=True, pl
 
     legends_temp = [(ax_temp.get_legend_handles_labels()[1], ax_temp, 'tab:red')]
 
-    # Always plot cost on the first axis
+    # Price Axis with smoothing
     legends_cost = []
-    color = 'tab:green'
-    ax_cost.set_xlabel('Time (h)')
-    ax_cost.set_ylabel('Cost (€)', color=color)
-    ax_cost.plot(state_opt_df['Cost'].cumsum(), color=color, linestyle='-', label='Optimal Cost')
-    ax_cost.plot(state_base_df['Cost'].cumsum(), color=color, linestyle='--', label='Baseline Cost')
-    ax_cost.tick_params(axis='y', labelcolor=color)
-    ax_cost.tick_params(axis='x', rotation=45)
-    legends_cost.append((ax_cost.get_legend_handles_labels()[1], ax_cost, 'tab:green'))
 
-    # Price Axis (if needed)
     if plot_price:
         ax_price = ax_cost.twinx()
         color = 'tab:grey'
         ax_price.plot(state_opt_df['Price'], color=color)
         ax_price.set_ylabel('Price (€/kWh)', color=color)
         ax_price.tick_params(axis='y', labelcolor=color)
-        legends_cost.append((['Price'], ax_price, color))
+        legends_cost.append((['Electricity Price'], ax_price, color))
 
     if plot_heater_output or plot_cooling_output:
         # Heater Output Subplot (if plot_heater_output is True)
@@ -66,6 +58,7 @@ def plot_combined_cases(state_opt_df, state_base_df, plot_heater_output=True, pl
             ax_heater_label.append('Cooling')
 
         ax_heater.set_ylabel('/'.join(ax_heater_label)+' Output (%)', fontsize=8)
+        ax_heater.tick_params(axis='y', labelcolor='tab:red')
         legends_cost.append((ax_heater.get_legend_handles_labels()[1], ax_heater, 'tab:red'))
 
     # Place temp legends
@@ -79,13 +72,165 @@ def plot_combined_cases(state_opt_df, state_base_df, plot_heater_output=True, pl
         )
 
     # Place cost legends
+    len_count=0
     for i, (legend_text, ax, color) in enumerate(legends_cost):
         ax.legend(
             legend_text, 
             loc='lower left', 
-            bbox_to_anchor=(0.30*i, 1.01), 
+            bbox_to_anchor=(0.2*(len_count), 1.01), 
             ncol=len(legend_text),
             prop={'size': 10}
+        )
+        len_count +=  len(legend_text)
+        
+    # Adjust layout
+    plt.tight_layout(rect=[0, 0, 1, 0.95])  # Leave room for legends
+
+    return fig
+
+def plot_combined_cases_years(state_opt_df, state_base_df, plot_T_exterior=True):
+    # Determine the number of subplots based on heater output
+    fig, (ax_temp, ax_cost) = plt.subplots(2, 1, figsize=(14, 8), 
+                                              gridspec_kw={'height_ratios': [3, 1]}, sharex= True)
+    
+    start_time = state_opt_df.index.min()
+    end_time = state_opt_df.index.max()
+    ax_temp.set_xlim(start_time, end_time)
+    ax_cost.set_xlim(start_time, end_time)
+
+    if plot_T_exterior:
+        # Create daily aggregations
+        daily_temp = state_opt_df['ExteriorTemperature'].resample('D').agg(['mean', 'min', 'max'])
+        
+        # Create a rolling average of the daily mean temperatures (7-day window)
+        rolling_mean = daily_temp['mean'].rolling(window=7, center=True).mean()
+        
+
+        # First, add the comfort zone as a shaded area
+        comfort_min = 18.0
+        comfort_max = 24.0
+        ax_temp.axhspan(comfort_min, comfort_max, alpha=0.2, color='green', label='Comfort Zone (18-24°C)')
+
+        # Plot the smoothed line
+        color = 'tab:pink'
+        ax_temp.plot(rolling_mean.index, rolling_mean, 
+                    color=color, linestyle='-', linewidth=2, 
+                    label='Exterior Temp (7-day avg)')
+        
+        # Create shaded envelope for min/max temperatures
+        ax_temp.fill_between(daily_temp.index, 
+                            daily_temp['min'], 
+                            daily_temp['max'], 
+                            color=color, alpha=0.3,
+                            label='Daily Min/Max Range')
+
+        # Add legend if not already present elsewhere
+        handles, labels = ax_temp.get_legend_handles_labels()
+        if 'Exterior Temp' in labels or 'Exterior Temp (7-day avg)' in labels:
+            ax_temp.legend(loc='best')
+
+    # Single temperature axis
+    legends_temp = []
+    color = 'tab:red'
+    ax_temp.set_ylabel('Temperature (°C)')
+    ax_temp.plot(state_opt_df['InteriorTemperature'], color=color, linestyle='-', label='Optimal Interior Temperature')
+    ax_temp.plot(state_base_df['InteriorTemperature'], color='k', linestyle='-', label='Baseline Interior Temperature')
+
+    legends_temp = [(ax_temp.get_legend_handles_labels()[1], ax_temp, 'tab:red')]
+
+    # Create a twin axis for cost savings
+
+
+    color = 'tab:grey'
+    
+    # Resample price to daily values
+    daily_price = state_opt_df['Price'].resample('D').agg(['mean', 'min', 'max'])
+    
+    # Create a rolling average (7-day window)
+    rolling_price = daily_price['mean'].rolling(window=7, center=True).mean()
+    
+    # Plot the smoothed line
+    ax_cost.plot(rolling_price.index, rolling_price,
+                color=color, linestyle='-', linewidth=2,
+                label='Electricity Price (7-day avg)')
+    
+    ax_cost.fill_between(daily_price.index, 
+                        daily_price['min'], 
+                        daily_price['max'], 
+                        color=color, alpha=0.3,
+                        label='Daily Min/Max Range')
+    handles, labels = ax_cost.get_legend_handles_labels()
+    ax_cost.legend(loc='best')
+    # Plot the original data with lower opacity if desired
+    # ax_cost.plot(state_opt_df['Price'], color=color, alpha=0.3, linewidth=0.5)
+    
+    ax_cost.set_ylabel('Price (€/kWh)')
+    ax_cost.tick_params(axis='y', labelcolor=color)
+    legends_cost = [(ax_cost.get_legend_handles_labels()[1], ax_cost, 'tab:red')]
+
+    # Cumulative cost
+    ax_cost2 = ax_cost.twinx()
+    color = 'tab:green'
+    ax_cost2.set_xlabel('Time (h)')
+    ax_cost2.set_ylabel('Cumulative Cost (€)')
+    ax_cost2.plot(state_opt_df['Cost'].cumsum(), color=color, linestyle='-', label='Optimal Cumulative Cost')
+    ax_cost2.plot(state_base_df['Cost'].cumsum(), color=color, linestyle='--', label='Baseline Cumulative Cost')
+    ax_cost2.tick_params(axis='y', labelcolor=color)
+    ax_cost2.tick_params(axis='x', rotation=45)
+    legends_cost.append((ax_cost2.get_legend_handles_labels()[1], ax_cost2, color))
+    # print the difference in total costs
+    print(sum(state_base_df['Cost']-state_opt_df['Cost'])/sum(state_base_df['Cost']))
+
+    # Daily cost
+    ax_day = ax_cost.twinx()
+    ax_day.spines["right"].set_position(("outward", 60))
+    color = 'tab:olive'
+
+    # Get the base and optimal costs
+    base_cost = state_base_df['Cost']
+    opt_cost = state_opt_df['Cost']  # Fixed: was using state_base_df twice
+
+    # Resample to daily values
+    daily_base = base_cost.resample('D').sum()
+    daily_opt = opt_cost.resample('D').sum()
+
+    # Create rolling averages (30-day window)
+    rolling_base = daily_base.rolling(window=7, center=True).mean()
+    rolling_opt = daily_opt.rolling(window=7, center=True).mean()
+
+    # Plot both lines
+    ax_day.plot(rolling_base.index, rolling_base, 
+                color=color, linestyle='--', linewidth=2, 
+                label='Base Cost (7-day avg)')
+                
+    ax_day.plot(rolling_opt.index, rolling_opt, 
+                color=color, linestyle='-', linewidth=2, 
+                label='Optimal Cost (7-day avg)')
+
+    ax_day.set_xlabel('Time (h)')
+    ax_day.set_ylabel('Cost (€/day)')
+    ax_day.tick_params(axis='y', labelcolor=color)
+    ax_day.tick_params(axis='x', rotation=45)
+    legends_cost.append((ax_day.get_legend_handles_labels()[1], ax_day, color))
+
+    # Place temp legends
+    for i, (legend_text, ax, color) in enumerate(legends_temp):
+        ax.legend(
+            legend_text, 
+            loc='lower left', 
+            bbox_to_anchor=(0.25*i, 1.01), 
+            ncol=len(legend_text),
+            prop={'size': 8}
+        )
+
+    # Place cost legends
+    for i, (legend_text, ax, color) in enumerate(legends_cost):
+        ax.legend(
+            legend_text, 
+            loc='lower left', 
+            bbox_to_anchor=(0.33*i, 1.01), 
+            ncol=len(legend_text),
+            prop={'size': 8}
         )
 
     # Adjust layout
