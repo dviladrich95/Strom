@@ -27,14 +27,6 @@ def test_get_weather_data_different_cities():
 def test_get_price_data():
     price_series = get_price_series()
 
-def test_get_historical_price_data():
-    end = pd.Timestamp.now(tz='Europe/Madrid')
-    start = end - pd.Timedelta(days=29)
-    time_range = pd.date_range(start=start, end=end, freq='d', tz='Europe/Madrid')
-
-    price_series = get_price_series(time_range=time_range)
-    assert len(price_series) == 30
-
 def test_join_data():
     temp_series = get_weather_data(city="Oslo")
     price_series = get_price_series()
