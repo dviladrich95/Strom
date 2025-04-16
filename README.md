@@ -43,6 +43,28 @@ Requires **Python 3.12.8**
     PASSWORD=myPassword12
     ```
 
+6. You can optionally add your custom house heating parameters to a "house_config.json" file in the _config_ folder.
+
+```json
+{
+    "C_air": 0.56,
+    "C_wall": 3.5,
+    "R_interior": 1.0,
+    "R_exterior": 6.06,
+    "Q_heater": 2.0,
+    "Q_cooling": 0.0,
+    "T_min": 18.0,
+    "T_max": 24.0,
+    "T_interior_init": 18.5,
+    "T_wall_init": 18.5,
+    "P_base": 0.01,
+    "freq": "1h"
+}
+```
+
+ Otherwise the main script will generate and empty json file that will fill the house with the default values we used.
+
+
 ## Usage
 
 [Technical documentation](https://janbalanya.com/strom-docs/)
