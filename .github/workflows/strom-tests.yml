@@ -30,7 +30,6 @@ jobs:
     - name: Create empty config file if missing
       run: |
         mkdir -p config
-        echo '{}' > config/house_config.json
 
     - name: Lint with flake8
       run: |
