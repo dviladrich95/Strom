@@ -18,7 +18,15 @@ try:
     with open('./config/house_config.json', 'r') as f:
         house_params = json.load(f)
 except (FileNotFoundError, json.JSONDecodeError):
-    # Raise an error if the file is not found or is not valid JSON
+    # If the folder exists but the file does not, print a warning and create an empty JSON file
+    config_folder = './config'
+    if os.path.isdir(config_folder):
+        print("Warning: house_config.json not found. Creating an empty JSON file.")
+        with open('./config/house_config.json', 'w') as f:
+            json.dump({}, f)
+        house_params = {}
+    else:
+        raise ValueError("House config folder not found.")
     raise ValueError("House config file not found or invalid JSON.")
 
 house = House(**house_params)
