@@ -42,7 +42,7 @@ def get_weather_api_key() -> str:
     os.chdir(find_root_dir())
     return read_api_key('./config/weather_api_key.txt')
 
-def get_weather_data(city: str = "Barcelona, ES") -> pd.DataFrame:
+def get_weather_data(city: str = "Barcelona, ES") -> pd.Series:
     """Get weather for specified city. Examples: Barcelona, ES | Madrid, ES | Berlin, DE"""
     api_key = get_weather_api_key()
     
@@ -81,7 +81,7 @@ def interpolate_hourly_data(df: pd.DataFrame, hours: int) -> pd.DataFrame:
     df = df.reindex(time_range).interpolate()
     return df.bfill() if df.isnull().values.any() else df
 
-def get_spain_electricity_prices() -> pd.DataFrame:
+def get_spain_electricity_prices() -> pd.Series:
     price_api_key = os.getenv('PRICE_API_KEY') or read_api_key('./config/price_api_key.txt')
     client = EntsoePandasClient(api_key=price_api_key)
     

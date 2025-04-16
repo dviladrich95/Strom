@@ -2,7 +2,6 @@ from strom import optimization_utils
 from strom.api_utils import read_api_key as get_api_key, get_weather_data, get_price_series
 from strom.data_utils import get_temp_price_df, join_data
 
-import numpy as np
 import pandas as pd
 
 def test_get_api_key():
@@ -13,7 +12,7 @@ def test_get_api_key():
 def test_get_weather_data():
     temp_series = get_weather_data(city="Oslo")
     #check that all values are non nan
-    assert not temp_series.isnull().values.any()
+    assert not temp_series.isnull().any()
     #check that the dataframe has a column whose name is 'ExteriorTemperature'
     assert temp_series.name == 'ExteriorTemperature'
 

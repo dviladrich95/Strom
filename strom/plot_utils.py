@@ -309,6 +309,8 @@ def plot_factor_analysis(
     elif type == 'Absolute':
         values = baseline_cost - optimal_cost
         title = 'Absolute Cost Savings (€)'
+    else:
+        raise ValueError("Invalid type. Expected 'Relative' or 'Absolute'.")
 
 
     # Flatten for Plotly

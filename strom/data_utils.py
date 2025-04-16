@@ -34,6 +34,6 @@ def get_temp_price_from_temp(temp_df):
     temp_df.set_index('Timestamp', inplace=True)
     temp_df = temp_df.groupby(temp_df.index).mean().resample('h').interpolate('time')
     temp_series = temp_df['ExteriorTemperature']
-    price_series = get_price_series(time_range=temp_series.index)
+    price_series = get_price_series()
     temp_price_df = join_data(temp_series, price_series)
     return temp_price_df

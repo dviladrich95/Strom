@@ -169,6 +169,8 @@ def find_heating_output(temp_price_df: pd.DataFrame,
         obj = obj_cost
     elif heating_mode == "baseline":
         obj = (1-tau)*obj_temp + tau*obj_cost # add a small amount of cost sensitivity to avoid unrealistic heater + cooling scenarios
+    else:
+        raise ValueError("Invalid heating mode. Choose 'optimal' or 'baseline'.")
     objective = cp.Minimize(obj)
     
     # Solve optimization problem
