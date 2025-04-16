@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
-from typing import Tuple, List
+from typing import List
 from matplotlib.figure import Figure
 
 def plot_combined_cases(
@@ -109,7 +109,7 @@ def plot_combined_cases(
         len_count +=  len(legend_text)
         
     # Adjust layout
-    plt.tight_layout(rect=[0, 0, 1, 0.95])  # Leave room for legends
+    plt.tight_layout(rect=(0, 0, 1, 0.95))  # Leave room for legends
 
     return fig
 
@@ -274,7 +274,7 @@ def plot_combined_cases_years(
         )
 
     # Adjust layout
-    plt.tight_layout(rect=[0, 0, 1, 0.95])  # Leave room for legends
+    plt.tight_layout(rect=(0, 0, 1, 0.95))  # Leave room for legends
 
     return fig
 

@@ -47,7 +47,7 @@ class House:
         self.T_wall_init = T_wall_init
         self.P_base = P_base
 
-def smooth_temperature(data: np.ndarray,
+def smooth_temperature(data: pd.Series,
                       window_hours: float,
                       dt: float) -> np.ndarray:
     """Smooth temperature data using a rolling mean.
@@ -70,7 +70,7 @@ def smooth_temperature(data: np.ndarray,
     
     return smoothed.to_numpy()
 
-def calculate_baseline_target(ext_temp_series: np.ndarray,
+def calculate_baseline_target(ext_temp_series: pd.Series,
                             T_min: float,
                             T_max: float,
                             resolution_hours: float) -> np.ndarray:
