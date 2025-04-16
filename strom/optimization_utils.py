@@ -1,17 +1,39 @@
+from typing import Union, Tuple
 import numpy as np
 import pandas as pd
 import cvxpy as cp
 
-# parameters estimated from https://protonsforbreakfast.wordpress.com/2022/12/19/estimating-the-heat-capacity-of-my-house/
-# C_ air = 0.15*C_wall
-# define an object heating_parameters
-
 class House:
-    def __init__(self, C_air=0.56, C_wall=3.5, R_interior=1.0,
-                R_exterior=6.06, Q_heater=2.0, Q_cooling=0.0, T_min=18.0, 
-                T_max=24.0, T_interior_init = 18.5,
-                T_wall_init = 18.5, P_base = 0.01,  freq='1h'):
-        
+    """A class representing thermal properties and constraints of a house.
+    
+    Attributes:
+        C_air (float): Heat capacity of air [kWh/°C]
+        C_wall (float): Heat capacity of walls [kWh/°C]
+        R_interior (float): Thermal resistance between air and walls [°C/kW]
+        R_exterior (float): Thermal resistance between walls and exterior [°C/kW]
+        Q_heater (float): Maximum heating power [kW]
+        Q_cooling (float): Maximum cooling power [kW]
+        freq (str): Time frequency for calculations (e.g., '1h')
+        T_min (float): Minimum allowed interior temperature [°C]
+        T_max (float): Maximum allowed interior temperature [°C]
+        T_interior_init (float): Initial interior temperature [°C]
+        T_wall_init (float): Initial wall temperature [°C]
+        P_base (float): Base electricity price [€/kWh]
+    """
+    
+    def __init__(self, 
+                 C_air: float = 0.56,
+                 C_wall: float = 3.5,
+                 R_interior: float = 1.0,
+                 R_exterior: float = 6.06,
+                 Q_heater: float = 2.0,
+                 Q_cooling: float = 0.0,
+                 T_min: float = 18.0,
+                 T_max: float = 24.0,
+                 T_interior_init: float = 18.5,
+                 T_wall_init: float = 18.5,
+                 P_base: float = 0.01,
+                 freq: str = '1h') -> None:
         self.C_air = C_air
         self.C_wall = C_wall
         self.R_interior = R_interior
@@ -25,7 +47,19 @@ class House:
         self.T_wall_init = T_wall_init
         self.P_base = P_base
 
-def smooth_temperature(data, window_hours, dt):
+def smooth_temperature(data: np.ndarray,
+                      window_hours: float,
+                      dt: float) -> np.ndarray:
+    """Smooth temperature data using a rolling mean.
+    
+    Args:
+        data: Array of temperature values
+        window_hours: Size of smoothing window in hours
+        dt: Time step size in hours
+    
+    Returns:
+        Smoothed temperature array
+    """
     window_size = round(window_hours / dt)
     
     # Convert to pandas Series to use rolling mean
@@ -36,7 +70,21 @@ def smooth_temperature(data, window_hours, dt):
     
     return smoothed.to_numpy()
 
-def calculate_baseline_target(ext_temp_series, T_min, T_max, resolution_hours):
+def calculate_baseline_target(ext_temp_series: np.ndarray,
+                            T_min: float,
+                            T_max: float,
+                            resolution_hours: float) -> np.ndarray:
+    """Calculate target temperature profile based on exterior temperature.
+    
+    Args:
+        ext_temp_series: Array of exterior temperatures
+        T_min: Minimum allowed temperature
+        T_max: Maximum allowed temperature
+        resolution_hours: Time resolution in hours
+    
+    Returns:
+        Array of target temperatures clipped to [T_min, T_max]
+    """
     # Smooth temperature over 24 hours
     smoothed_ext = smooth_temperature(ext_temp_series, 24, resolution_hours)
     
@@ -45,10 +93,21 @@ def calculate_baseline_target(ext_temp_series, T_min, T_max, resolution_hours):
     
     return target
 
-def find_heating_output(temp_price_df, house, heating_mode):
-    """
-    Determines the optimal heating output for a given day based on exterior temperature and electricity price,
-    using explicit Euler integration for thermal dynamics.
+def find_heating_output(temp_price_df: pd.DataFrame,
+                       house: House,
+                       heating_mode: str) -> pd.DataFrame:
+    """Optimize heating/cooling output based on prices and exterior temperature.
+    
+    Args:
+        temp_price_df: DataFrame with columns 'ExteriorTemperature' and 'Price'
+        house: House object containing thermal parameters
+        heating_mode: Either 'optimal' (minimize cost) or 'baseline' (follow target)
+    
+    Returns:
+        DataFrame with optimal heating/cooling schedule and resulting temperatures
+    
+    Raises:
+        ValueError: If no optimal solution is found
     """
     state_df = temp_price_df.copy()  # Make a copy of the dataframe
     state_df = state_df.resample(house.freq).interpolate(method='linear').bfill().ffill()
@@ -135,12 +194,17 @@ def find_heating_output(temp_price_df, house, heating_mode):
     
     return state_df
 
-def compare_output_costs(temp_price_df,house):
-        
+def compare_output_costs(temp_price_df: pd.DataFrame,
+                        house: House) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Compare optimal and baseline heating strategies.
+    
+    Args:
+        temp_price_df: DataFrame with exterior temperature and price data
+        house: House object containing thermal parameters
+    
+    Returns:
+        Tuple of DataFrames (optimal_results, baseline_results)
     """
-    units will use kW and kWh
-    """
-
     optimal_state_df  = find_heating_output(temp_price_df, house, "optimal")
     baseline_state_df = find_heating_output(temp_price_df, house, "baseline")
 

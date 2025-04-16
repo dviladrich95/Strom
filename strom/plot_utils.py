@@ -2,8 +2,33 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
+from typing import Tuple, List
+from matplotlib.figure import Figure
 
-def plot_combined_cases(state_opt_df, state_base_df, plot_heater_output=True, plot_cooling_output=False, plot_price=True, plot_T_exterior=True, plot_wall_temp=True):
+def plot_combined_cases(
+    state_opt_df: pd.DataFrame,
+    state_base_df: pd.DataFrame,
+    plot_heater_output: bool = True,
+    plot_cooling_output: bool = False,
+    plot_price: bool = True,
+    plot_T_exterior: bool = True,
+    plot_wall_temp: bool = True
+) -> Figure:
+    """
+    Create a combined plot comparing optimal and baseline cases for temperature and cost metrics.
+
+    Args:
+        state_opt_df: DataFrame containing optimal state data
+        state_base_df: DataFrame containing baseline state data
+        plot_heater_output: Whether to plot heater output
+        plot_cooling_output: Whether to plot cooling output
+        plot_price: Whether to plot electricity price
+        plot_T_exterior: Whether to plot exterior temperature
+        plot_wall_temp: Whether to plot wall temperature
+
+    Returns:
+        matplotlib.figure.Figure: The generated plot
+    """
     # Determine the number of subplots based on heater output
     fig, (ax_temp, ax_cost) = plt.subplots(2, 1, figsize=(14, 8), 
                                               gridspec_kw={'height_ratios': [3, 1]}, sharex= True)
@@ -88,7 +113,22 @@ def plot_combined_cases(state_opt_df, state_base_df, plot_heater_output=True, pl
 
     return fig
 
-def plot_combined_cases_years(state_opt_df, state_base_df, plot_T_exterior=True):
+def plot_combined_cases_years(
+    state_opt_df: pd.DataFrame,
+    state_base_df: pd.DataFrame,
+    plot_T_exterior: bool = True
+) -> Figure:
+    """
+    Create a combined yearly plot comparing optimal and baseline cases with daily aggregations.
+
+    Args:
+        state_opt_df: DataFrame containing optimal state data
+        state_base_df: DataFrame containing baseline state data
+        plot_T_exterior: Whether to plot exterior temperature
+
+    Returns:
+        matplotlib.figure.Figure: The generated plot
+    """
     # Determine the number of subplots based on heater output
     fig, (ax_temp, ax_cost) = plt.subplots(2, 1, figsize=(14, 8), 
                                               gridspec_kw={'height_ratios': [3, 1]}, sharex= True)
@@ -239,9 +279,28 @@ def plot_combined_cases_years(state_opt_df, state_base_df, plot_T_exterior=True)
     return fig
 
 
-def plot_factor_analysis(optimal_cost,baseline_cost,
-                        C_walls_list, Q_heater_list, R_external_list,
-                        type):
+def plot_factor_analysis(
+    optimal_cost: np.ndarray,
+    baseline_cost: np.ndarray,
+    C_walls_list: List[float],
+    Q_heater_list: List[float],
+    R_external_list: List[float],
+    type: str
+) -> go.Figure:
+    """
+    Create a 3D scatter plot analyzing the impact of different factors on cost savings.
+
+    Args:
+        optimal_cost: Array of optimal costs for different parameter combinations
+        baseline_cost: Array of baseline costs for different parameter combinations
+        C_walls_list: List of wall heat capacity values
+        Q_heater_list: List of heating power values
+        R_external_list: List of R-values (thermal resistance)
+        type: Type of analysis ('Relative' or 'Absolute')
+
+    Returns:
+        plotly.graph_objects.Figure: Interactive 3D scatter plot
+    """
     # Create meshgrid
     X, Y, Z = np.meshgrid(C_walls_list, Q_heater_list, R_external_list)
     if type == 'Relative':
