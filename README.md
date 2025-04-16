@@ -2,7 +2,7 @@
 
 [![Unit Tests](https://github.com/Bloodwing1/Strom/actions/workflows/strom-tests.yml/badge.svg)](https://github.com/Bloodwing1/Strom/actions/workflows/strom-tests.yml)
 
-[![Documentation Status](https://img.shields.io/badge/documentation-yes-brightgreen)](https://janbalanya.com/strom-docs/)
+[![Docs](https://img.shields.io/badge/docs-dev-blue)](https://janbalanya.com/strom-docs/)
 
 
 ## Overview
