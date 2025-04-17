@@ -8,7 +8,7 @@ from strom.api_utils import find_root_dir
 from strom.optimization_utils import find_heating_output, House
 
 # Load the environment variables from the .env file
-load_dotenv(dotenv_path="../../config/tapologin.env")
+load_dotenv(dotenv_path="./config/tapologin.env")
 
 email = os.getenv("EMAIL")  # Get email from the environment variable
 password = os.getenv("PASSWORD")  # Get password from the environment variable
@@ -32,12 +32,8 @@ except (FileNotFoundError, json.JSONDecodeError):
 
 house = House(**house_params)
 
-if not device_ip:
-    os.chdir(find_root_dir())
-    with open('./config/device_IP.txt') as f:
-        device_ip = f.read().strip()
-
 async def main():
+
     try:
         # Discover the devices
         if not device_ip:
