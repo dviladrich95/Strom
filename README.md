@@ -24,8 +24,8 @@ Requires **Python 3.12.8**
 2. Create a virtual environment and activate it:
 
     ```sh
-    python -m venv venv
-    source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+    python -m venv .venv
+    source .venv/bin/activate  # On Windows use ``
     ```
 
 3. Install the required packages:
@@ -43,7 +43,7 @@ Requires **Python 3.12.8**
     PASSWORD=myPassword12
     ```
 
-6. You can optionally add your custom house heating parameters to a "house_config.json" file in the _config_ folder.
+6. You can modify house heating parameters in the "house_config.json" file in the _config_ folder.
 
 ```json
 {
@@ -76,6 +76,28 @@ python main.py  # python3 main.py for Mac users
 ```
 
 Alternatively create [a cron job](https://www.freecodecamp.org/news/cron-jobs-in-linux/) or similar, that activates the main script hourly.
+
+## Documentation
+
+The project uses Sphinx for documentation. While the repository is private, you can build and view the documentation locally.
+
+### Local Build Instructions
+
+1.  **Install documentation dependencies**:
+    ```sh
+    pip install -r docs/requirements.txt
+    ```
+
+2.  **Build the documentation**:
+    ```sh
+    cd docs
+    sphinx-build -b html . _build/html
+    ```
+
+3.  **View the documentation**:
+    Open `docs/_build/html/index.html` in your web browser.
+
+Once the repository is made public, it is pre-configured for automatic deployment on [Read the Docs](https://readthedocs.org).
 
 ## Future Considerations
 
