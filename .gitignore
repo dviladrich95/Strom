@@ -15,3 +15,5 @@ __pycache__/
 plots/*
 .aider*
 docs/_build/*
+CLAUDE.md
+/.claude/
