@@ -1,11 +1,21 @@
 # Case Study: Smart Heating Optimization
 
+## 0. The story
+
+A friend wanted to automate the use of his electric stove around dynamic electricity tariffs — prices that swing hour by hour — without having to check an app manually every hour.
+
 ## 1. The Business Problem
 
-- **Stakeholder:** A friend wanted to automate the use of his electric stove around dynamic electricity tariffs — prices that swing hour by hour — without having to check an app manually every hour.
+- **Stakeholder:** Individual user 
+
+
+USP conditions: 
+safety gurantees in comfort temperature, and a low electricity bill.
+
+
 - **Context:** Spain has one of Europe's highest shares of renewable generation, which drives large intra-day price swings (the "duck curve"). As solar penetration grows, the spread between cheap and expensive hours keeps widening, and dynamic pricing plans now expose these fluctuations directly to consumers.
 - **Opportunity:** *Load shifting* — consuming energy at lower-cost times without changing total consumption. Heating and cooling are especially attractive targets: they are large loads, and comfort tolerates a few degrees and several hours of flexibility, which is exactly the slack we need.
-- **Objective:** Minimize the electricity bill while keeping indoor temperature within a defined comfort band. A physical model of the building lets us formulate this as a convex optimization problem: solved in milliseconds, globally optimal, and fully interpretable.
+- **Objective:** Minimize the electricity bill while keeping indoor temperature within a defined comfort band. [add and objective about gurantees: we want to guarantee that the temperature will not drop below the minimum temperature, and that the user will never pay exorbitant prices] A physical model of the building lets us formulate this as a convex optimization problem: solved in milliseconds, globally optimal, and fully interpretable. [add an example, like seeing that the heat battery reached it full capacity in this time frame]
 - **Value Proposition:** Lower bills for consumers; demand-side flexibility for the grid.
 
 ---
@@ -53,13 +63,18 @@ The battery intuition maps directly to an electrical circuit analogy: thermal ma
 
 **The challenge:** find the optimal heater command sequence over a 24-hour horizon, subject to linear system dynamics and hard temperature constraints.
 
+[add comment about that ML without guarantees is not as critical as infrastructure, but still quite important for user retention]
+
 | Method | Pros | Cons |
 |---|---|---|
 | **Rule-based (thermostat)** | Simple, off-the-shelf | Myopic; no concept of price; cannot pre-heat |
 | **Reinforcement Learning** | Handles non-linear dynamics without explicit modeling | Requires extensive training data; no hard constraint guarantees on comfort |
-| **Convex Optimization / MPC (our choice)** | Global optimum guaranteed; hard constraints satisfied by construction; re-solves hourly with fresh forecasts | Requires a linear model — non-linear dynamics would break convexity |
+| **Convex Optimization / MPC (our choice)** | [change to linear optimization] Global optimum guaranteed; hard constraints satisfied by construction; re-solves hourly with fresh forecasts | Requires a linear model — non-linear dynamics would break convexity |
 
-**Why convex optimization:** With a linear physical model and a linear cost function (power × price), the full problem is convex. Solvers exploit this structure to find the global optimum in milliseconds. Temperature bounds are hard constraints, not soft penalties — comfort is guaranteed, not just encouraged.
+**Why convex optimization:** With a linear physical model and a linear cost function (power × price), the full problem is convex. 
+[comment that we can use more powerful standard solvers like CVXPY]
+
+Solvers exploit this structure to find the global optimum in known timeframes. Temperature bounds are hard constraints, not soft penalties — comfort is guaranteed, not just encouraged.
 
 ---
 
@@ -67,9 +82,28 @@ The battery intuition maps directly to an electrical circuit analogy: thermal ma
 
 | Tool | Role |
 |---|---|
-| **Python + CVXPY** | Optimization formulation for daily runs and real-time execution |
-| **Julia + JuMP.jl** | High-performance solver for large-scale historical backtests where Python becomes the bottleneck |
+| **Python + CVXPY** | Optimization formulation for daily runs and real-time execution [CVXPY specifically for linear and convex optimization problems] |
+| **Julia + JuMP.jl** | High-performance solver for large-scale historical backtests where Python becomes the bottleneck [python solvers run 10x slower ] |
+
+[separate julia vs python as two separate options]
+
+
+| Tool | Role |
+|---|---|
 | **pandas / numpy** | Time-series manipulation of prices and temperatures |
 | **ENTSO-E API** | Day-ahead electricity price forecasts |
 | **OpenWeatherMap API** | Exterior temperature forecasts |
 | **python-kasa** | Async control of the TP-Link smart plug |
+
+
+## Results 
+
+## 7. Conclusion
+
+[add a summary of the results, highlighting the cost savings and comfort guarantees]
+
+## 8. Future Work
+
+[optimization on the coordinator level, adding stochastic elements, see my study on V2G energy management]
+
+[]

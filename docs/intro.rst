@@ -10,7 +10,7 @@ Key Features:
 * **Optimization**: Uses convex optimization to find the best schedule.
 
 Getting Started:
----------------
+----------------
 Please refer to the `README.md` in the project root for detailed installation instructions.
 
 .. toctree::
