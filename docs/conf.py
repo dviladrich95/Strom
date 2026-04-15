@@ -14,8 +14,11 @@ extensions = [
     'sphinx.ext.viewcode',
     'sphinx.ext.napoleon',
     'sphinx.ext.intersphinx',
+    'sphinx.ext.mathjax',
     'myst_parser',
 ]
+
+myst_enable_extensions = ['dollarmath']
 
 templates_path = ['_templates']
 exclude_patterns = [
