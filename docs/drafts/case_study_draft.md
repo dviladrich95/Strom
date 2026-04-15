@@ -89,7 +89,7 @@
 
 ### 1. Business Problem
 - **Stakeholder:** individual homeowner on variable tariff
-- **USP:** comfort guarantees (T_min, price ceiling) + low bill
+- **USP:** comfort guarantees ($T_{min}$) + low bill; price floor $P_{base}$ keeps consumer price realistic vs. wholesale ENTSO-E data
 - **Context:** Spain → duck curve → widening price spread → dynamic plans expose fluctuations to consumers
 - **Opportunity:** load shifting; heating/cooling = large load + comfort slack (few °C, few hours)
 - **Objective:** minimize bill s.t. comfort band + price ceiling; physical model → linear opt → ms solve, global optimum, interpretable (e.g. "heat battery full at hour X")
@@ -100,28 +100,28 @@
 ### 2. Intuitive Dynamics
 - **Reframe:** pricing problem → thermal storage problem
 - **Why storage:** electricity most perishable good; thermal mass = cheapest storage
-- **Battery anatomy:** two chambers (air: thin/fast, wall: wide/slow) + leaky pipe to outside → chamber volume = C, pipe width = R
-- **Key terms:** $C$ (energy/°C), $R$ (leakage rate), comfort band (hard constraint)
+- **Battery anatomy:** two chambers (air: thin/fast, wall: wide/slow) + leaky pipe to outside → $C$ = chamber volume, $R$ = pipe width
+- **Newton cooling:** $C \frac{dT}{dt} = \frac{T_{neighbour}-T}{R} + Q$ — one equation per lump, one per interface
 - **Cooling:** same model, $Q_{cool}$ with negative sign; passive alternatives (shutters → linear; windows → bilinear → Future Work)
 
 ---
 
-### 3. Physical Model
-- **2R2C circuit:** masses→capacitors, insulation→resistors, heater→current source
-- **State:** T_air, T_wall over time
-- **Inputs:** T_ext (disturbance), Q_heater (control)
-- **Equations:** continuous-time ODEs at air–wall and wall–exterior interfaces → discretized state-space for optimization
+### 3. Modeling Alternatives & Model Selection
+| Model | Granularity | Pro | Con |
+|---|---|---|---|
+| 1R1C | air only | simple | misses wall dynamics; over-optimistic |
+| **2R2C** | air + wall | wall inertia + linear | lumped approximation |
+| EnergyPlus | full spatial | accurate | heavy; not real-time |
+
+- **Selection:** 2R2C = minimal model capturing two time constants (fast air, slow wall); 1R1C loses heat-battery effect; FEM breaks linearity
 
 ---
 
-### 4. Modeling Alternatives
-| Model | Pro | Con |
-|---|---|---|
-| 1R1C | simple | misses wall dynamics |
-| EnergyPlus | accurate | heavy, not real-time |
-| **2R2C** | wall inertia + linear | lumped approximation |
-
-- **Expanded view:** 2-equation system in calculus form → matrix form (Ẋ = AX + Bu); analogies to hydraulic networks and RC circuits in EE
+### 4. Physical Model
+- **2R2C circuit:** masses→capacitors, insulation→resistors, heater→current source
+- **State:** $T_{air}$, $T_{wall}$; inputs: $T_{ext}$ (disturbance), $Q_{heater}$ (control)
+- **Equations:** $\dot{\mathbf{T}} = A\mathbf{T} + B\mathbf{u}_t + \mathbf{d}_t$; $A$ encodes inter-node conductance; $B$ diagonal (inverse capacities); $\mathbf{u}_t = [Q_{heater} u_t,\ 0]^\top$, $u_t \in [0,1]$ heater fraction; $\mathbf{d}_t \neq 0$ — $T_{ext}$ forcing in wall row
+- **Parameters:** $C_{air}=0.56$, $C_{wall}=3.5$, $R_{int}=1.0$, $R_{ext}=6.06$; estimated via [Protons for Breakfast method](https://protonsforbreakfast.wordpress.com/2022/12/19/estimating-the-heat-capacity-of-my-house/)
 
 ---
 
@@ -132,7 +132,8 @@
 | RL | no explicit model needed | no hard guarantees; data-hungry; hurts user retention |
 | **Linear MPC** | global opt; hard constraints; receding horizon; CVXPY; interpretable | needs linear model |
 
-- **Model in code:** discretized matrix form as in `find_heating_output`; state-space propagation as equality constraint; price vector as linear cost coefficient
+- **Discretization:** Euler step $\mathbf{T}_{t+1} = \mathbf{T}_t + \Delta t(A\mathbf{T}_t + B\mathbf{u}_t + \mathbf{d}_t)$ → linear equality constraints
+- **LP in code:** [`find_heating_output`](../../strom/optimization_utils.py) (line 96); $u_t \in [0,1]$ decision variable; price vector as cost coefficient
 
 ---
 
@@ -193,6 +194,7 @@ USP conditions: safety guarantees on comfort temperature, and a low electricity 
 - **Context:** Spain has one of Europe's highest shares of renewable generation, which drives large intra-day price swings (the "duck curve"). As solar penetration grows, the spread between cheap and expensive hours keeps widening, and dynamic pricing plans now expose these fluctuations directly to consumers.
 - **Opportunity:** *Load shifting* — consuming energy at lower-cost times without changing total consumption. Heating and cooling are especially attractive targets: they are large loads, and comfort tolerates a few degrees and several hours of flexibility, which is exactly the slack we need.
 - **Objective:** Minimize the electricity bill while keeping indoor temperature within a defined comfort band, guaranteeing that the temperature never drops below T_min and that the user is never exposed to exorbitant price spikes. A physical model of the building lets us formulate this as a convex optimization problem: solved in milliseconds, globally optimal, and fully interpretable — for example, the optimizer can tell you "pre-heat fully between 02:00 and 05:00 when the price hits its floor, then coast through the morning peak."
+- **Price data realism:** The ENTSO-E API provides day-ahead prices at the megawatt industrial scale, where prices can reach zero or go negative during oversupply. A real consumer tariff always has a minimum — network charges, taxes, and provider margins don't disappear. A constant price floor $P_{base}$ is added to all ENTSO-E prices before optimization, bridging the gap between wholesale market data and the price a household actually pays.
 - **Value Proposition:** Lower bills for consumers; demand-side flexibility for the grid.
 
 ---
@@ -206,44 +208,97 @@ The key reframe: *this is a thermal storage problem*. A house stores heat the wa
 - **Building as a battery — the intuition:** Picture two chambers connected by a narrow pipe. The *air chamber* is thin: a small amount of heat raises its temperature quickly. The *wall chamber* is wide: it absorbs a lot of energy before its temperature moves much. A second, leaky pipe connects the wall to the outdoors; how narrow that pipe is reflects how well-insulated the building is. The chamber volumes map to *thermal capacity* (energy per degree), and the pipe widths map to *thermal resistance* (how fast heat leaks). These are exactly the constants used in the model.
 
 - **Key Terms:**
-  - *Heat Capacity (C):* Energy required to raise a component's temperature by 1 °C.
-  - *Thermal Resistance (R):* Rate at which heat leaks between two components (or to the outside).
+  - *Heat Capacity ($C$):* Energy required to raise a component's temperature by 1 °C.
+  - *Thermal Resistance ($R$):* Rate at which heat leaks between two components (or to the outside).
   - *Comfort Band:* The acceptable temperature range (e.g., 18 °C – 24 °C) — the hard constraint the optimizer must never violate.
+
+- **Newton's law of cooling** governs how each lump exchanges heat with its neighbours:
+  $$C \frac{dT}{dt} = \frac{T_{neighbour} - T}{R} + Q$$
+  A lump heats up when its neighbour is warmer, cools down when it is colder, and any externally injected power $Q$ shifts the balance. Each interface in the building adds one such equation to the system.
 
 Active cooling follows the same model in reverse: $Q_{cool}$ enters the air equation with a negative sign, and the same price-aware scheduling logic applies — pre-cool before the afternoon peak and coast through it. This is equally relevant for Spanish households managing summer heat.
 
 ---
 
-## 3. The Physical Model
+## 3. Modeling Alternatives & Model Selection
 
-The battery intuition maps directly to an electrical circuit analogy: thermal masses → capacitors, insulation → resistors, heater power → controlled current source. This yields a **2R2C model** (Two-Resistor, Two-Capacitor), a standard pattern in building energy simulation.
+A building can be modeled at many levels of granularity — from a single lumped temperature to full finite-element spatial resolution. The right choice depends on what dynamics matter for the application.
 
-- **Components:**
-  - Two thermal masses: Indoor Air and the Insulated Wall.
-  - Two thermal resistances: Air ↔ Wall, and Wall ↔ Exterior.
-- **System State:** Air and wall temperatures over time.
-- **Inputs:** Exterior temperature (disturbance) and heater/cooler power (control variable).
-- **Governing equations:** Heat flow at each interface follows Newton's law of cooling. At the air–wall interface: C_air · dT_air/dt = (T_wall − T_air)/R_interior + Q_heater. At the wall–exterior interface: C_wall · dT_wall/dt = (T_air − T_wall)/R_interior + (T_ext − T_wall)/R_exterior. These two coupled first-order ODEs are then discretized (Euler forward) into a state-space form suitable for embedding in the optimization.
+| Model | Granularity | Pros | Cons |
+|---|---|---|---|
+| **1R1C (1 lump)** | Air only | Extremely simple | Misses wall dynamics; over-optimistic about heat retention |
+| **2R2C (2 lumps — our choice)** | Air + wall | Captures slow wall vs. fast air dynamics; remains linear | Lumped approximation |
+| **White-box / FEM (e.g. EnergyPlus)** | Full spatial | Highly accurate | Computationally heavy; hard to parameterize; not suited for real-time optimization |
+
+**Why 2R2C:** A house has two thermally relevant lumps — the indoor air, which responds quickly, and the insulated wall mass, which responds slowly. This difference in time constants is exactly what creates the heat-battery effect: the wall stores energy over hours, not minutes. A 1R1C model collapses both into one and loses this dynamic entirely. A full FEM model adds resolution that isn't needed here and breaks the linearity required to embed the model inside a convex optimization. The 2R2C is the minimal model that captures the essential physics.
 
 ---
 
-## 4. Modeling Alternatives & Selection Justification
+## 4. The Physical Model
 
-| Model | Pros | Cons |
+With the 2R2C model selected, the building maps to an electrical circuit: thermal masses → capacitors, insulation → resistors, heater power → controlled current source. Applying Newton's law of cooling at each interface gives one ODE per lump.
+
+- **System state:** $T_{air}$ and $T_{wall}$ over time.
+- **Inputs:** $T_{ext}$ (disturbance) and $Q_{heater}$ / $Q_{cool}$ (control).
+
+At the air–wall interface:
+$$C_{air} \frac{dT_{air}}{dt} = \frac{T_{wall} - T_{air}}{R_{interior}} + Q_{heater}$$
+
+At the wall–exterior interface:
+$$C_{wall} \frac{dT_{wall}}{dt} = \frac{T_{air} - T_{wall}}{R_{interior}} + \frac{T_{ext} - T_{wall}}{R_{exterior}}$$
+
+The two equations are coupled through $T_{wall}$ and $T_{air}$ and can be written together in matrix form:
+
+$$\dot{\mathbf{T}} = A\mathbf{T} + B\mathbf{u} + \mathbf{d}_t$$
+
+where:
+- $\mathbf{T} = [T_{air},\ T_{wall}]^\top$ — the state vector of the two lump temperatures
+- $\mathbf{u}_t = [u_{air,t},\ u_{wall,t}]^\top = [Q_{heater} \cdot u_t,\ 0]^\top$ — the control vector; $u_t \in [0,1]$ is the heater output fraction at timestep $t$; only the air lump receives direct heat input, so the wall component is always zero
+- $A$ — the conductance matrix; each off-diagonal entry is a heat pathway between two lumps, each diagonal entry is the total heat loss rate out of that lump
+- $B$ — the input matrix; scales each control component by the inverse capacity of the corresponding lump
+- $\mathbf{d}_t$ — a time-varying disturbance vector carrying the exterior temperature forcing (see below)
+
+$$A = \begin{pmatrix} -\dfrac{1}{R_{int} C_{air}} & \dfrac{1}{R_{int} C_{air}} \\[8pt] \dfrac{1}{R_{int} C_{wall}} & -\dfrac{\frac{1}{R_{int}} + \frac{1}{R_{ext}}}{C_{wall}} \end{pmatrix}, \qquad B = \begin{pmatrix} \dfrac{1}{C_{air}} & 0 \\[8pt] 0 & \dfrac{1}{C_{wall}} \end{pmatrix}, \qquad \mathbf{u}_t = \begin{pmatrix} Q_{heater} \cdot u_t \\[4pt] 0 \end{pmatrix}$$
+
+Component by component:
+
+| Entry | Expression | Meaning |
 |---|---|---|
-| **1R1C (1st-order)** | Extremely simple | Too simplistic; misses slow wall dynamics; over-optimistic about heat retention |
-| **White-box / FEM (e.g. EnergyPlus)** | Highly accurate, detailed spatial resolution | Computationally heavy, hard to parameterize for a typical home, not suited for fast online optimization |
-| **2R2C (our choice)** | Captures slow wall vs. fast air dynamics; remains linear | Lumped approximation — not suitable for highly asymmetric or unusual buildings |
+| $A_{11}$ | $-\dfrac{1}{R_{int}\,C_{air}}$ | Heat loss rate of air to wall — air cools as it drives heat through $R_{int}$ |
+| $A_{12}$ | $+\dfrac{1}{R_{int}\,C_{air}}$ | Heat gain rate of air from wall — wall drives heat back through $R_{int}$ |
+| $A_{21}$ | $+\dfrac{1}{R_{int}\,C_{wall}}$ | Heat gain rate of wall from air |
+| $A_{22}$ | $-\dfrac{\frac{1}{R_{int}}+\frac{1}{R_{ext}}}{C_{wall}}$ | Total heat loss rate of wall — leaks to air via $R_{int}$ and to outside via $R_{ext}$ |
+| $B_{11}$ | $+\dfrac{1}{C_{air}}$ | Scales air control input by inverse air capacity |
+| $B_{22}$ | $+\dfrac{1}{C_{wall}}$ | Scales wall control input by inverse wall capacity (multiplied by zero — no wall heater) |
+| $u_{air,t}$ | $Q_{heater} \cdot u_t$ | Actual heater power delivered to air at timestep $t$; $u_t \in [0,1]$ is the decision variable |
+| $u_{wall,t}$ | $0$ | No direct heat source on the wall |
 
-**Why 2R2C:** The smallest model that captures the essential wall-inertia dynamic while staying *linear*. Linearity is what allows us to embed the model directly inside a convex optimization problem.
+With numerical values ($C_{air}=0.56$, $C_{wall}=3.5$, $R_{int}=1.0$, $R_{ext}=6.06$):
 
-The two ODEs above can be written compactly in matrix form:
+$$A \approx \begin{pmatrix} -1.79 & 1.79 \\[4pt] 0.29 & -0.33 \end{pmatrix}, \qquad B \approx \begin{pmatrix} 1.79 & 0 \\[4pt] 0 & 0.29 \end{pmatrix}$$
 
-```
-dX/dt = A·X + B·u + d
-```
+The two diagonal entries of $A$ have very different magnitudes — $|A_{11}| \approx 1.79$ vs $|A_{22}| \approx 0.33$ — which directly reflects the two time constants: air responds roughly 5× faster than the wall. This is the separation of timescales that makes the heat-battery effect possible.
 
-where X = [T_air, T_wall]ᵀ, u = Q_heater, and d encodes the T_ext disturbance. This is the same state-space structure familiar from hydraulic network analysis (where A encodes conductance between pressure nodes) and RC circuit analysis in electrical engineering (where the same equation governs node voltages). The analogy is not coincidental — heat, charge, and fluid obey the same conservation laws at each node.
+The same conductance-matrix structure appears in hydraulic networks and RC circuits in electrical engineering — heat, charge, and fluid all obey the same conservation law at each node.
+
+**On the disturbance vector $\mathbf{d}_t$:** it is not zero. Expanding the wall–exterior heat flux: $\frac{T_{ext} - T_{wall}}{R_{ext}} = -\frac{T_{wall}}{R_{ext}} + \frac{T_{ext}}{R_{ext}}$. The $-T_{wall}/R_{ext}$ term is absorbed into $A_{22}$ (it is proportional to a state variable); the $+T_{ext}/R_{ext}$ term cannot enter $A$ (since $T_{ext}$ is not a state) nor $B$ (since it is not a control) — so it becomes a time-varying forcing term driven by the measured exterior temperature forecast:
+
+$$\mathbf{d}_t = \begin{pmatrix} 0 \\[4pt] \dfrac{T_{ext}(t)}{R_{ext}\, C_{wall}} \end{pmatrix}$$
+
+The air row is zero because the heater is the only external input to the air lump — its thermal coupling to the wall is already fully captured in $A$.
+
+**Parameter values:** Estimated following the methodology in [Estimating the heat capacity of my house](https://protonsforbreakfast.wordpress.com/2022/12/19/estimating-the-heat-capacity-of-my-house/).
+
+| Parameter | Value | Units | Description |
+|---|---|---|---|
+| $C_{air}$ | 0.56 | kWh/°C | Heat capacity of indoor air |
+| $C_{wall}$ | 3.5 | kWh/°C | Heat capacity of the insulated wall |
+| $R_{interior}$ | 1.0 | °C/kW | Thermal resistance between air and wall |
+| $R_{exterior}$ | 6.06 | °C/kW | Thermal resistance between wall and outside |
+| $Q_{heater}$ | 2.0 | kW | Heater power |
+| $T_{min}$ / $T_{max}$ | 18 / 24 | °C | Comfort band |
+
+<!-- TODO: expand on the estimation procedure — what measurements or inputs does the method require, and how were they obtained for Jan's apartment? -->
 
 ---
 
@@ -263,7 +318,11 @@ Note on RL: the lack of hard comfort guarantees is less critical than infrastruc
 
 Solvers exploit this structure to find the global optimum in known, bounded time. Temperature bounds enter as hard constraints, not soft penalties — comfort is guaranteed, not just encouraged.
 
-The discretized model as implemented in `find_heating_output` expresses the state-space propagation X_{t+1} = A·X_t + B·u_t + d_t as equality constraints in the optimization problem. The heater output u_t is the decision variable at each timestep; the day-ahead price vector enters as the linear cost coefficient. The result is a single LP solved once per hour over the full 24-step horizon.
+To embed the continuous model inside an optimization problem, the ODEs are discretized with a forward Euler step of $\Delta t = 1\text{h}$:
+
+$$\mathbf{T}_{t+1} = \mathbf{T}_t + \Delta t \left( A\mathbf{T}_t + B\mathbf{u}_t + \mathbf{d}_t \right)$$
+
+This turns each timestep's state propagation into a linear equality constraint. The full LP — 24 such constraints, heater output $u_t \in [0,1]$ as decision variable, comfort bounds as inequality constraints, and the day-ahead price vector as cost coefficient — is implemented in [`find_heating_output`](../../strom/optimization_utils.py) (`strom/optimization_utils.py`, line 96). The result is a single LP solved once per hour over the full 24-step horizon.
 
 ---
 
