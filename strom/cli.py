@@ -30,7 +30,6 @@ def setup_env_config():
             house_params = {}
         else:
             raise ValueError("House config folder not found.")
-        raise ValueError("House config file not found or invalid JSON.")
 
     house = House(**house_params)
 
