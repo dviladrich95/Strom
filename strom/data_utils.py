@@ -1,6 +1,18 @@
 import pandas as pd
 from .api_utils import get_weather_data, get_price_series
 
+
+def remove_temperature_spikes(series: pd.Series, threshold: float = 5.0) -> pd.Series:
+    """Replace isolated temperature spikes with the average of their two neighbors.
+
+    Detects salt-and-pepper glitches: timesteps where the value deviates from
+    the mean of the previous and next sample by more than `threshold` degrees.
+    Those points are replaced by that neighbor mean; all other values are unchanged.
+    """
+    neighbor_mean = (series.shift(1) + series.shift(-1)) / 2
+    spikes = (series - neighbor_mean).abs() > threshold
+    return series.where(~spikes, other=neighbor_mean)
+
 def join_data(temp_series, price_series):
     """
     Merge temperature and price dataframes on the 'Timestamp' column and extract temperature and prices as numpy arrays.

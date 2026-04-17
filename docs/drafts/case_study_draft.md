@@ -150,11 +150,11 @@
 ---
 
 ### 7. Results
-- **Baseline:** 24h-smoothed exterior temp clipped to comfort band
-- **Single day (Nov 25):** pre-heats at price floor; ~10% savings
+- **Baseline:** 24h rolling mean of exterior temp clipped to $[T_{min}, T_{max}]$; minimum-intervention policy (clips to $T_{min}$ in winter, $T_{max}$ in summer); steelmanned vs. naive constant center which would over-heat/cool and be trivially easy to beat
+- **Single day (Nov 25):** pre-heats at price floor; **58.54% savings** (not load shifting — optimizer buys *more* energy at cheap hours: 16.01 kWh vs baseline 13.52 kWh)
 - **Charging event:** 18°C → ~21°C; $T_{min}$ never breached
 - **Two-year (+ cooling):** 17% reduction / 66€; gap widest in spring + autumn (most scheduling slack)
-- **Temperature volatility:** ~4°C avg swings; gradual so tolerable on average, but outlier spikes need capping for consumer trust
+- **Temperature volatility:** Nov monthly shows ~2°C spikes above $T_{min}$ coinciding with cheap price windows; baseline tracks $T_{min}$ almost constantly; bang-bang control visible (expected from LP, but relevant for hardware)
 
 ### 8. Conclusion
 - full-stack applied math: physics → LP → real-time IoT control
@@ -310,7 +310,7 @@ Note on RL: the lack of hard comfort guarantees is less critical than infrastruc
 
 | Method | Pros | Cons |
 |---|---|---|
-| **Rule-based (thermostat)** | Simple, off-the-shelf | Myopic; no concept of price; cannot pre-heat |
+| **Rule-based (thermostat)** | Simple, off-the-shelf | Myopic; no concept of day ahead price; will notout pre-heat |
 | **Reinforcement Learning** | Handles non-linear dynamics without explicit modeling | Requires extensive training data; no hard constraint guarantees on comfort |
 | **Linear Optimization / MPC (our choice)** | Global optimum guaranteed; hard constraints satisfied by construction; re-solves hourly with fresh forecasts | Requires a linear model — non-linear dynamics would break convexity |
 
@@ -350,23 +350,27 @@ This turns each timestep's state propagation into a linear equality constraint. 
 
 All comparisons are against a **baseline policy**: a 24-hour rolling mean of exterior temperature, clipped to $[T_{min}, T_{max}]$, tracked by a small optimizer with a negligible cost term to prevent simultaneous heating and cooling.
 
+This choice of baseline deserves a brief justification, because the comparison is only meaningful if the baseline is genuinely hard to beat. A naive alternative — targeting the center of the comfort band year-round, say 21°C — would be too easy to outperform: in winter it would overheat the house well beyond the minimum necessary, and in summer it would overcool it, both wasting energy that the optimizer could trivially avoid. The rolling mean baseline avoids this by modelling a plausible, already-lean human behaviour: a user who adapts their thermostat roughly to the season and the weather, always targeting the comfort boundary that requires the least effort given exterior conditions. In winter, when the rolling mean falls below $T_{min}$, the baseline clips to $T_{min}$ — heating only as much as comfort demands. In summer, when the rolling mean exceeds $T_{max}$, it clips to $T_{max}$ — cooling only as much as comfort demands. The result is a minimum-intervention policy in both directions, symmetric across seasons. Any savings over this baseline come purely from smarter timing of energy purchases, not from exploiting a wasteful comparison point.
+
 ### Single Day — 25 November 2024
 
 ![Historical Comparison - Nov 25th 2024](../plots/compare_costs_temps_Barcelona_25th_Nov.png)
 *Optimal vs. baseline policy on 25 November 2024.*
 
 - The optimizer pre-heats during the duck-curve price floor at the center of the day and at night, then coasts through the expensive morning peak.
-- Cost savings: **~10%** vs. the baseline policy on this day.
+- Cost savings: **58.54%** vs. the baseline policy on this day (see [results_Barcelona_25th_Nov.txt](../results/results_Barcelona_25th_Nov.txt), Cost Summary).
 - The 25th was a day of exceptionally low prices for a prolonged window — the largest single charging event in the backtest period.
+- The savings mechanism is not pure load shifting. The optimizer consumes **16.01 kWh** against the baseline's **13.52 kWh** (see [results_Barcelona_25th_Nov.txt](../results/results_Barcelona_25th_Nov.txt), Energy Consumption) — it buys *more* energy in total, but concentrates purchases at the cheapest hours. Savings come from exploiting price differences, not from reducing overall consumption.
 
 ### November 2024
 
 ![Monthly Comparison - Nov 2024](../plots/compare_costs_temps_Barcelona_Nov.png)
 *Optimal vs. baseline policy across the second half of November 2024.*
 
-- Temperature spikes are visible throughout the month wherever the price floor is deep enough to warrant pre-heating.
-- The largest spike (Nov 25) drove $T_{interior}$ from $T_{min} = 18°C$ to approximately $21°C$ — well within the comfort band and illustrating the heat battery being charged to near-full.
+- The baseline policy tracks almost constantly at $T_{min}$ — it heats just enough to hold the comfort floor and no more.
+- The optimal policy shows repeated charging spikes above $T_{min}$, each coinciding with a low-price window. Visual inspection of the plot suggests an average spike amplitude of roughly 2°C above the baseline, with the largest event (Nov 25) reaching approximately 21°C (see [Single Day](#single-day--25-november-2024)).
 - $T_{min}$ was never breached; comfort constraints held throughout.
+- The heater control is **bang-bang**: the optimizer drives $u_t$ to 0 or 1 at almost every timestep, with very few intermediate values. This is the expected behaviour of a linear program with box constraints on the control variable — the optimum always sits at a vertex of the feasible set. It is worth noting for hardware considerations: cycling a resistive heater or heat pump at full on/off rates may cause accelerated wear, and a smoother control profile (e.g. via a regularization term on $\Delta u_t$) would be a practical refinement before deployment.
 
 ### Two-Year Backtest — March 2023 to March 2025
 
@@ -390,7 +394,7 @@ All comparisons are against a **baseline policy**: a 24-hour rolling mean of ext
 ## 9. Future Work
 
 - Coordinator-level optimization across multiple devices or households
-- Adding stochastic elements (price and weather uncertainty)
+- Adding stochastic optimization (optimal choices under price and weather uncertainty)
 - V2G energy management (see separate study)
 - A regularization term penalizing large jumps in interior temperature (e.g. $\sum_t |T_{t+1} - T_t|$) or a hard rate constraint on $\Delta T$ per timestep could smooth the profile without significantly increasing cost. Average ~4°C swings are gradual enough to be tolerable, but outlier events with larger swings need to be capped before wider deployment — a single jarring temperature spike is enough to break consumer trust.
 - Passive thermal control: roller shutters modulating solar gain introduce a new linear input term and stay within the current LP framework. Opening windows to ventilate is more interesting — it makes $R_{exterior}$ a decision variable, introducing a product $\alpha \cdot T_{wall}$ of two optimization variables. This is a bilinear term that breaks convexity, placing the extended problem firmly in the terrain of bilinear programming, addressable via SDP relaxations.

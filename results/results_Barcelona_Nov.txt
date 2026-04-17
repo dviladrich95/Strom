@@ -1,0 +1,33 @@
+Results: Barcelona — November 2024
+==================================
+
+Cost Summary
+───────────
+  Baseline total cost : 27.7515 €
+  Optimal  total cost : 26.5427 €
+  Absolute savings    : 1.2088 €
+  Relative savings    : 4.36%
+
+Energy Consumption
+──────────────────
+  Optimal  heating : 257.08 kWh
+  Optimal  cooling : 0.00 kWh
+  Optimal  total   : 257.08 kWh
+  Baseline heating : 225.91 kWh
+  Baseline cooling : 0.29 kWh
+  Baseline total   : 226.20 kWh
+  (Compare totals: equal => pure load shifting; optimal > baseline => savings from buying more at cheaper hours)
+
+Temperature Constraints (Optimal)
+─────────────────────────────────
+  Comfort band        : [18.0 °C, 24.0 °C]
+  T_min violations    : 0
+  T_max violations    : 0
+  Interior range      : [18.00 °C, 24.00 °C]
+
+Temperature Volatility — Optimal (timestep = 0.08333 h)
+─────────────────────────────────────────────────────────
+  Mean  |ΔT| : 0.018 °C
+  Std   |ΔT| : 0.041 °C
+  P95   |ΔT| : 0.103 °C
+  Max   |ΔT| : 0.292 °C

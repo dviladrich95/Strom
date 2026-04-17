@@ -1,5 +1,7 @@
 from strom.optimization_utils import House, compare_output_costs
 from strom.plot_utils import plot_combined_cases
+from strom.data_utils import remove_temperature_spikes
+from case_study.results_utils import compute_and_save_results
 
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -20,6 +22,7 @@ house = House(
     )
 
 temp_price_df = pd.read_csv('data/Temp_Price_Barcelona_Nov.csv', index_col="Timestamp", parse_dates=["Timestamp"])
+temp_price_df['ExteriorTemperature'] = remove_temperature_spikes(temp_price_df['ExteriorTemperature'])
 
 # remove the first half of the data
 i_init = 23*len(temp_price_df) //30
@@ -32,5 +35,12 @@ fig = plot_combined_cases(optimal_state_df, baseline_state_df)
 # Save as png
 fig.savefig("./plots/compare_costs_temps_Barcelona_25th_Nov.png")
 
-#show the plot
-plt.show()
+compute_and_save_results(
+    optimal_state_df,
+    baseline_state_df,
+    "./results/results_Barcelona_25th_Nov.txt",
+    house,
+    label="Barcelona — 25th November 2024",
+)
+
+plt.close()

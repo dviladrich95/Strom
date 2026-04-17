@@ -1,7 +1,24 @@
+from strom.optimization_utils import House
 from strom.plot_utils import plot_combined_cases_years
+from case_study.results_utils import compute_and_save_results
 
 import pandas as pd
 import matplotlib.pyplot as plt
+
+house = House(
+    C_air=0.56,
+    C_wall=3.5,
+    R_interior=1.0,
+    R_exterior=6.06,
+    Q_heater=2.0,
+    Q_cooling=2.0,
+    T_min=18.0,
+    T_max=24.0,
+    T_interior_init=18.5,
+    T_wall_init=18.5,
+    P_base=0.01,
+    freq="1h",
+)
 
 optimal_state_df = pd.read_csv('data/optimal_state2.csv', index_col='Timestamp', parse_dates=['Timestamp'])
 baseline_state_df = pd.read_csv('data/baseline_state2.csv', index_col='Timestamp', parse_dates=['Timestamp'])
@@ -14,5 +31,12 @@ fig = plot_combined_cases_years(optimal_state_df, baseline_state_df)
 # Save as png
 fig.savefig("./plots/compare_costs_temps_Barcelona_Mar23_Mar25.png")
 
-#show the plot
-plt.show()
+compute_and_save_results(
+    optimal_state_df,
+    baseline_state_df,
+    "./results/results_Barcelona_Mar23_Mar25.txt",
+    house,
+    label="Barcelona — March 2023 to March 2025",
+)
+
+plt.close()
