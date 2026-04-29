@@ -17,3 +17,4 @@ plots/*
 docs/_build/*
 CLAUDE.md
 /.claude/
+docs/papers/*.pdf
