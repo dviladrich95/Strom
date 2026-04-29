@@ -106,10 +106,10 @@ def test_regularize_df():
 
 def test_house_defaults():
     house = House()
-    assert house.C_air == 0.56
-    assert house.C_wall == 3.5
-    assert house.R_interior == 1.0
-    assert house.R_exterior == 6.06
+    assert house.C_air == 0.26
+    assert house.C_wall == 19.1
+    assert house.R_interior == 0.42
+    assert house.R_exterior == 8.86
     assert house.Q_heater == 2.0
     assert house.Q_cooling == 0.0
     assert house.T_min == 18.0
