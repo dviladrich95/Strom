@@ -2,7 +2,8 @@
 .DS_Store
 /.idea
 src/strom/__pycache__
-/config
+/config/*
+!/config/.gitkeep
 scripts/*.ipynb
 /.vscode
 tests/__pycache__/*

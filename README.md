@@ -47,10 +47,10 @@ Requires **Python 3.12.8**
 
 ```json
 {
-    "C_air": 0.56,
-    "C_wall": 3.5,
-    "R_interior": 1.0,
-    "R_exterior": 6.06,
+    "C_air": 0.26,
+    "C_wall": 19.1,
+    "R_interior": 0.42,
+    "R_exterior": 8.86,
     "Q_heater": 2.0,
     "Q_cooling": 0.0,
     "T_min": 18.0,
