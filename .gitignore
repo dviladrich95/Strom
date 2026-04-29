@@ -9,11 +9,16 @@ scripts/*.ipynb
 tests/__pycache__/*
 /strom.egg-info
 data/*
+!data/Spain.csv
+!data/.gitkeep
 src/__pycache__/__init__.cpython-312.pyc
 __pycache__/
 *.pyc
 *.ipynb
 plots/*
+!plots/.gitkeep
+results/*
+!results/.gitkeep
 .aider*
 docs/_build/*
 CLAUDE.md

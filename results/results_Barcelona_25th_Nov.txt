@@ -3,19 +3,19 @@ Results: Barcelona — 25th November 2024
 
 Cost Summary
 ───────────
-  Baseline total cost : 0.6172 €
-  Optimal  total cost : 0.2575 €
-  Absolute savings    : 0.3596 €
-  Relative savings    : 58.27%
+  Baseline total cost : 0.2653 €
+  Optimal  total cost : 0.0450 €
+  Absolute savings    : 0.2203 €
+  Relative savings    : 83.02%
 
 Energy Consumption
 ──────────────────
-  Optimal  heating : 17.02 kWh
+  Optimal  heating : 3.27 kWh
   Optimal  cooling : 0.00 kWh
-  Optimal  total   : 17.02 kWh
-  Baseline heating : 13.96 kWh
-  Baseline cooling : 0.38 kWh
-  Baseline total   : 14.33 kWh
+  Optimal  total   : 3.27 kWh
+  Baseline heating : 4.84 kWh
+  Baseline cooling : 2.47 kWh
+  Baseline total   : 7.31 kWh
   (Compare totals: equal => pure load shifting; optimal > baseline => savings from buying more at cheaper hours)
 
 Temperature Constraints (Optimal)
@@ -23,11 +23,19 @@ Temperature Constraints (Optimal)
   Comfort band        : [18.0 °C, 24.0 °C]
   T_min violations    : 0
   T_max violations    : 0
-  Interior range      : [18.00 °C, 20.71 °C]
+  Interior range      : [18.00 °C, 19.00 °C]
 
 Temperature Volatility — Optimal (timestep = 0.08333 h)
 ─────────────────────────────────────────────────────────
-  Mean  |ΔT| : 0.019 °C
-  Std   |ΔT| : 0.040 °C
-  P95   |ΔT| : 0.095 °C
-  Max   |ΔT| : 0.301 °C
+  Mean  |ΔT| : 0.004 °C
+  Std   |ΔT| : 0.035 °C
+  P95   |ΔT| : 0.003 °C
+  Max   |ΔT| : 0.638 °C
+
+Swing Amplitude — Optimal (peak prominence ≥ 0.5 °C)
+─────────────────────────────────────────────────────────
+  Heating events  : 1
+  Cooling events  : 0
+  Mean  amplitude : 0.93 °C
+  P95   amplitude : 0.93 °C
+  Max   amplitude : 0.93 °C

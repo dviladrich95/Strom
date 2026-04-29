@@ -354,7 +354,7 @@ This choice of baseline deserves a brief justification, because the comparison i
 
 ### Single Day — 25 November 2024
 
-![Historical Comparison - Nov 25th 2024](../plots/compare_costs_temps_Barcelona_25th_Nov.png)
+![Historical Comparison - Nov 25th 2024](../../plots/compare_costs_temps_Barcelona_25th_Nov.png)
 *Optimal vs. baseline policy on 25 November 2024.*
 
 - The optimizer pre-heats during the duck-curve price floor at the center of the day and at night, then coasts through the expensive morning peak.
@@ -364,7 +364,7 @@ This choice of baseline deserves a brief justification, because the comparison i
 
 ### November 2024
 
-![Monthly Comparison - Nov 2024](../plots/compare_costs_temps_Barcelona_Nov.png)
+![Monthly Comparison - Nov 2024](../../plots/compare_costs_temps_Barcelona_Nov.png)
 *Optimal vs. baseline policy across the second half of November 2024.*
 
 - The baseline policy tracks almost constantly at $T_{min}$ — it heats just enough to hold the comfort floor and no more.
@@ -374,7 +374,7 @@ This choice of baseline deserves a brief justification, because the comparison i
 
 ### Two-Year Backtest — March 2023 to March 2025
 
-![Long-term Comparison - 2023-2025](../plots/compare_costs_temps_Barcelona_Mar23_Mar25.png)
+![Long-term Comparison - 2023-2025](../../plots/compare_costs_temps_Barcelona_Mar23_Mar25.png)
 *Optimal vs. baseline policy over two years, with cooling included.*
 
 - Cooling was added for this analysis ($Q_{cool}$ entering the air equation with a negative sign; same LP framework).

@@ -6,14 +6,16 @@ from pathlib import Path
 
 SCRIPTS = [
     "case_study/baseline_compare_historical_25thNov.py",
+    "case_study/baseline_compare_historical_23-29Nov.py",
     "case_study/baseline_compare_historical_Nov.py",
     "case_study/baseline_compare_historical_Mar23_Mar25.py",
 ]
 
 RESULTS = [
-    ("Barcelona — 25th November 2024", "results/results_Barcelona_25th_Nov.txt"),
-    ("Barcelona — November 2024",      "results/results_Barcelona_Nov.txt"),
-    ("Barcelona — March 2023 to March 2025", "results/results_Barcelona_Mar23_Mar25.txt"),
+    ("Barcelona — 25th November 2024",        "results/results_Barcelona_25th_Nov.txt"),
+    ("Barcelona — 23rd to 29th November 2024", "results/results_Barcelona_23-29_Nov.txt"),
+    ("Barcelona — November 2024",             "results/results_Barcelona_Nov.txt"),
+    ("Barcelona — March 2023 to March 2025",  "results/results_Barcelona_Mar23_Mar25.txt"),
 ]
 
 OVERVIEW = "results/results_overview.txt"
