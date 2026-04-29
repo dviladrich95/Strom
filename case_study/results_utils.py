@@ -1,6 +1,8 @@
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
+from scipy.signal import find_peaks
 
 from strom.optimization_utils import House
 
@@ -92,6 +94,34 @@ def compute_and_save_results(
         f"  Max   |ΔT| : {diff.max():.3f} °C",
         "",
     ]
+
+    # ── Swing amplitude (charging-event peak prominence) ─────────────────────
+    # Prominence = how far a peak rises above the deepest valley between it and
+    # the next-higher peak. Captures what a user *feels*: the magnitude of
+    # warm/cool excursions between heating events. The 0.5 °C threshold filters
+    # bang-bang noise from the LP solution.
+    prominence_threshold = 0.5
+    _, heat_props = find_peaks(opt_T.values,  prominence=prominence_threshold)
+    _, cool_props = find_peaks(-opt_T.values, prominence=prominence_threshold)
+    heat_amps = heat_props["prominences"]
+    cool_amps = cool_props["prominences"]
+    all_amps  = np.concatenate([heat_amps, cool_amps])
+
+    lines += [
+        f"Swing Amplitude — Optimal (peak prominence ≥ {prominence_threshold} °C)",
+        "─────────────────────────────────────────────────────────",
+    ]
+    if len(all_amps) == 0:
+        lines += ["  (no swings detected above prominence threshold)", ""]
+    else:
+        lines += [
+            f"  Heating events  : {len(heat_amps)}",
+            f"  Cooling events  : {len(cool_amps)}",
+            f"  Mean  amplitude : {all_amps.mean():.2f} °C",
+            f"  P95   amplitude : {np.percentile(all_amps, 95):.2f} °C",
+            f"  Max   amplitude : {all_amps.max():.2f} °C",
+            "",
+        ]
 
     # ── Seasonal breakdown (runs > 60 days) ───────────────────────────────────
     span_days = (optimal_state_df.index[-1] - optimal_state_df.index[0]).days
