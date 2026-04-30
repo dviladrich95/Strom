@@ -22,12 +22,12 @@ class House:
     """
     
     def __init__(self, 
-                 C_air: float = 0.56,
-                 C_wall: float = 3.5,
-                 R_interior: float = 1.0,
-                 R_exterior: float = 6.06,
+                 C_air: float = 0.26,
+                 C_wall: float = 19.1,
+                 R_interior: float = 0.42,
+                 R_exterior: float = 8.86,
                  Q_heater: float = 2.0,
-                 Q_cooling: float = 0.0,
+                 Q_cooling: float = 2.0,
                  T_min: float = 18.0,
                  T_max: float = 24.0,
                  T_interior_init: float = 18.5,

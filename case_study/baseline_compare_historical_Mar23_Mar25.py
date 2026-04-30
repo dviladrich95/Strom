@@ -1,34 +1,66 @@
-from strom.optimization_utils import House
-from strom.plot_utils import plot_combined_cases_years
-from case_study.results_utils import compute_and_save_results
+import json
+from pathlib import Path
 
 import pandas as pd
 import matplotlib.pyplot as plt
 
-house = House(
-    C_air=0.56,
-    C_wall=3.5,
-    R_interior=1.0,
-    R_exterior=6.06,
-    Q_heater=2.0,
-    Q_cooling=2.0,
-    T_min=18.0,
-    T_max=24.0,
-    T_interior_init=18.5,
-    T_wall_init=18.5,
-    P_base=0.01,
-    freq="1h",
-)
+from strom.optimization_utils import House, find_heating_output
+from strom.plot_utils import plot_combined_cases_years
+from case_study.results_utils import compute_and_save_results
 
-optimal_state_df = pd.read_csv('data/optimal_state2.csv', index_col='Timestamp', parse_dates=['Timestamp'])
-baseline_state_df = pd.read_csv('data/baseline_state2.csv', index_col='Timestamp', parse_dates=['Timestamp'])
+FREQ = "5min"
+CHUNK_DIR = Path("data/chunks_Mar23_Mar25")
+INPUT_CSV = "data/Temp_Price_Barcelona_Mar23_Mar25.csv"
 
-#df_half = 1- len(optimal_state_df) // 100
-#optimal_state_df = optimal_state_df[df_half:]
-#baseline_state_df = baseline_state_df[df_half:]
+with open("config/house_config.json") as f:
+    house_cfg = json.load(f)
+
+temp_price_df = pd.read_csv(INPUT_CSV, index_col="Timestamp", parse_dates=["Timestamp"])
+assert isinstance(temp_price_df.index, pd.DatetimeIndex)
+months = sorted({(d.year, d.month) for d in temp_price_df.index})
+CHUNK_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def solve_or_load(month_df, mode, seam_T_int, seam_T_wall, path):
+    if path.exists():
+        return pd.read_csv(path, index_col="Timestamp", parse_dates=["Timestamp"])
+    house = House(
+        **{**house_cfg, "T_interior_init": seam_T_int, "T_wall_init": seam_T_wall},
+        freq=FREQ,
+    )
+    chunk = find_heating_output(month_df, house, mode)
+    if chunk["InteriorTemperature"].isna().any():
+        raise RuntimeError(f"Infeasible {mode} LP for {path.stem}")
+    chunk.to_csv(path)
+    return chunk
+
+
+seam_opt  = (house_cfg["T_interior_init"], house_cfg["T_wall_init"])
+seam_base = (house_cfg["T_interior_init"], house_cfg["T_wall_init"])
+
+opt_chunks, base_chunks = [], []
+for year, month in months:
+    tag = f"{year:04d}-{month:02d}"
+    print(f"\n=== Month {tag} ===")
+    month_df = temp_price_df[
+        (temp_price_df.index.year == year) & (temp_price_df.index.month == month)
+    ]
+
+    opt_chunk  = solve_or_load(month_df, "optimal",  *seam_opt,  CHUNK_DIR / f"optimal_{tag}.csv")
+    base_chunk = solve_or_load(month_df, "baseline", *seam_base, CHUNK_DIR / f"baseline_{tag}.csv")
+
+    seam_opt  = (opt_chunk["InteriorTemperature"].iloc[-1],  opt_chunk["WallTemperature"].iloc[-1])
+    seam_base = (base_chunk["InteriorTemperature"].iloc[-1], base_chunk["WallTemperature"].iloc[-1])
+
+    opt_chunks.append(opt_chunk)
+    base_chunks.append(base_chunk)
+
+optimal_state_df  = pd.concat(opt_chunks)
+baseline_state_df = pd.concat(base_chunks)
+
+house = House(**house_cfg, freq="1h")
 
 fig = plot_combined_cases_years(optimal_state_df, baseline_state_df)
-# Save as png
 fig.savefig("./plots/compare_costs_temps_Barcelona_Mar23_Mar25.png")
 
 compute_and_save_results(

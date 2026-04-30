@@ -2,16 +2,27 @@ import pandas as pd
 from .api_utils import get_weather_data, get_price_series
 
 
-def remove_temperature_spikes(series: pd.Series, threshold: float = 5.0) -> pd.Series:
-    """Replace isolated temperature spikes with the average of their two neighbors.
+def remove_temperature_spikes(
+    series: pd.Series, threshold: float = 3.0
+) -> pd.Series:
+    """Replace isolated salt-and-pepper spikes with the mean of their neighbours.
 
-    Detects salt-and-pepper glitches: timesteps where the value deviates from
-    the mean of the previous and next sample by more than `threshold` degrees.
-    Those points are replaced by that neighbor mean; all other values are unchanged.
+    A spike is a single sample where the jump from the previous value AND the
+    jump to the next value both exceed ``threshold`` in magnitude AND point in
+    opposite directions (a +X then -X pattern, or vice versa). This is more
+    conservative than a deviation-from-mean test — fast but continuous
+    temperature changes (a cold front passing) are not flagged. Endpoints are
+    left unchanged.
     """
+    delta_prev = series - series.shift(1)
+    delta_next = series.shift(-1) - series
+    is_spike = (
+        (delta_prev.abs() > threshold)
+        & (delta_next.abs() > threshold)
+        & (delta_prev * delta_next < 0)
+    )
     neighbor_mean = (series.shift(1) + series.shift(-1)) / 2
-    spikes = (series - neighbor_mean).abs() > threshold
-    return series.where(~spikes, other=neighbor_mean)
+    return series.where(~is_spike, other=neighbor_mean)
 
 def join_data(temp_series, price_series):
     """
