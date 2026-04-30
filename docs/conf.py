@@ -23,7 +23,7 @@ myst_enable_extensions = ['dollarmath']
 templates_path = ['_templates']
 exclude_patterns = [
     '_build', 'Thumbs.db', '.DS_Store',
-    'drafts/**', 'old_case_study.md',
+    'drafts/**',
 ]
 html_static_path = []
 

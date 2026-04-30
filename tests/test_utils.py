@@ -111,7 +111,7 @@ def test_house_defaults():
     assert house.R_interior == 0.42
     assert house.R_exterior == 8.86
     assert house.Q_heater == 2.0
-    assert house.Q_cooling == 0.0
+    assert house.Q_cooling == 2.0
     assert house.T_min == 18.0
     assert house.T_max == 24.0
     assert house.freq == '1h'

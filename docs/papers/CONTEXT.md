@@ -126,7 +126,7 @@ from the markers found in that draft.
     (12 cm extra insulation) — direct transfer to an unrefurbished
     apartment requires explicit adjustment of $R_w$
 - **Cited in:**
-  - — not yet cited
+  - `docs/drafts/case_study_draft.md` §4 (parameter source), §7 (cross-reference to air-wall gap derivation)
 
 ---
 
