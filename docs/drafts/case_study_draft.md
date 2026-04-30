@@ -323,6 +323,8 @@ The full two-year window cannot be solved as a single LP at $\Delta t = 5\,\text
 - Swing amplitude (620 heating + 619 cooling events): mean 1.09°C, P95 1.90°C, max 6.00°C. The max-6°C tail is the practical concern for user experience — individual large excursions erode trust faster than the mean suggests. Capping via a rate constraint on $\Delta T$ per timestep is the natural next step.
 - $T_{min}$ and $T_{max}$ never breached; comfort constraints held across all 25 months.
 
+<!-- TODO (modeling fix needed before publishing): the rolling-mean baseline tracks a specific temperature target even when exterior temperature naturally sits inside [T_min, T_max], causing unnecessary heating/cooling that a reasonable occupant would not do. The correct baseline ansatz is a cost function that is flat (zero penalty) inside the comfort band and only penalises violations — system-off-by-default when comfort is free. Attempting this previously hit solver degeneracy (LP infeasible or trivially zero when u_t=0 already satisfies constraints). Needs a proper fix; until then, the cooling savings figures (especially spring/autumn months and June 2024 100%) are partly an artefact of an unrealistically expensive baseline. -->
+
 ---
 
 ## 8. Conclusion
