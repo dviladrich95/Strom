@@ -25,7 +25,7 @@ exclude_patterns = [
     '_build', 'Thumbs.db', '.DS_Store',
     'drafts/**',
 ]
-html_static_path = []
+html_static_path = ['_static']
 
 # -- Options for HTML output -------------------------------------------------
 
