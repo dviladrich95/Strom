@@ -1,4 +1,4 @@
-from typing import Union, Tuple
+from typing import Tuple
 import numpy as np
 import pandas as pd
 import cvxpy as cp
@@ -119,8 +119,6 @@ def find_heating_output(temp_price_df: pd.DataFrame,
 
     time_steps = len(state_df)
     T_exterior = state_df["ExteriorTemperature"]
-    T_target = calculate_baseline_target(state_df["ExteriorTemperature"], house.T_min, house.T_max, dt)
-    T_differential = 0.2
     # Initialize CVXPY variables
     heater_output = cp.Variable(time_steps)
     cooling_output = cp.Variable(time_steps)
@@ -160,15 +158,13 @@ def find_heating_output(temp_price_df: pd.DataFrame,
 
     # Objective functions for different scenarios
     obj_cost = cp.sum(cp.multiply(state_df["Price"], dt * ((house.Q_heater +1e-4) * heater_output+(house.Q_cooling +1e-4) *cooling_output) ))
-    # make a modified objective function of obj_temp that takes the maximum between the difference and 0
-    obj_temp = cp.sum(cp.abs(T[0, :] - (T_target - T_differential)) + cp.abs(T[0, :] - (T_target + T_differential)))
 
-
-    tau = 0.01
     if heating_mode == "optimal":
         obj = obj_cost
     elif heating_mode == "baseline":
-        obj = (1-tau)*obj_temp + tau*obj_cost # add a small amount of cost sensitivity to avoid unrealistic heater + cooling scenarios
+        # Minimum-effort policy: hard constraints already enforce T ∈ [T_min, T_max];
+        # this tiebreaker prefers u=0 whenever comfort is free (spring/autumn).
+        obj = 1e-3 * cp.sum(heater_output + cooling_output)
     else:
         raise ValueError("Invalid heating mode. Choose 'optimal' or 'baseline'.")
     objective = cp.Minimize(obj)
@@ -196,18 +192,82 @@ def find_heating_output(temp_price_df: pd.DataFrame,
     
     return state_df
 
-def compare_output_costs(temp_price_df: pd.DataFrame,
-                        house: House) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """Compare optimal and baseline heating strategies.
-    
-    Args:
-        temp_price_df: DataFrame with exterior temperature and price data
-        house: House object containing thermal parameters
-    
-    Returns:
-        Tuple of DataFrames (optimal_results, baseline_results)
-    """
-    optimal_state_df  = find_heating_output(temp_price_df, house, "optimal")
-    baseline_state_df = find_heating_output(temp_price_df, house, "baseline")
+def find_heating_output_thermostat(
+    temp_price_df: pd.DataFrame,
+    house: House,
+) -> pd.DataFrame:
+    """Rule-based deadband thermostat — reactive, non-anticipative.
 
-    return optimal_state_df, baseline_state_df
+    Propagates the 2R2C ODE forward with forward Euler using the same
+    dynamics as find_heating_output, but with a purely reactive rule:
+    heat when T_air < T_min, cool when T_air > T_max, off otherwise.
+    No future temperature or price information is used.
+    """
+    state_df = temp_price_df.copy()
+    state_df = state_df.resample(house.freq).interpolate(method="linear").bfill().ffill()
+    state_df["Price"] = state_df["Price"] + house.P_base
+
+    dt = pd.to_timedelta(house.freq).total_seconds() / 3600.0
+    time_steps = len(state_df)
+    T_ext = state_df["ExteriorTemperature"].values
+
+    # 2R2C matrix coefficients — identical to the LP formulation
+    a00 = -1.0 / (house.R_interior * house.C_air)
+    a01 =  1.0 / (house.R_interior * house.C_air)
+    a10 =  1.0 / (house.R_interior * house.C_wall)
+    a11 = -((1.0 / house.R_interior) + (1.0 / house.R_exterior)) / house.C_wall
+
+    T_air  = house.T_interior_init
+    T_wall = house.T_wall_init
+
+    heater_out  = np.zeros(time_steps)
+    cooling_out = np.zeros(time_steps)
+    T_air_traj  = np.zeros(time_steps)
+    T_wall_traj = np.zeros(time_steps)
+
+    for t in range(time_steps):
+        T_air_traj[t]  = T_air
+        T_wall_traj[t] = T_wall
+
+        if T_air < house.T_min:
+            u_h, u_c = 1.0, 0.0
+        elif T_air > house.T_max:
+            u_h, u_c = 0.0, 1.0
+        else:
+            u_h, u_c = 0.0, 0.0
+
+        heater_out[t]  = u_h
+        cooling_out[t] = u_c
+
+        b0 = (house.Q_heater * u_h - house.Q_cooling * u_c) / house.C_air
+        b1 = T_ext[t] / (house.R_exterior * house.C_wall)
+
+        T_air_new  = T_air  + dt * (a00 * T_air + a01 * T_wall + b0)
+        T_wall_new = T_wall + dt * (a10 * T_air + a11 * T_wall + b1)
+        T_air, T_wall = T_air_new, T_wall_new
+
+    state_df["HeaterOutput"]         = heater_out
+    state_df["CoolingOutput"]        = cooling_out
+    state_df["InteriorTemperature"]  = T_air_traj
+    state_df["WallTemperature"]      = T_wall_traj
+    state_df["Cost"] = state_df["Price"] * dt * (
+        state_df["HeaterOutput"]  * house.Q_heater +
+        state_df["CoolingOutput"] * house.Q_cooling
+    )
+    return state_df
+
+
+def compare_output_costs(
+    temp_price_df: pd.DataFrame,
+    house: House,
+) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Compare optimal, LP-baseline, and thermostat heating strategies.
+
+    Returns:
+        Tuple of DataFrames (optimal_results, lp_baseline_results, thermostat_results)
+    """
+    optimal_state_df     = find_heating_output(temp_price_df, house, "optimal")
+    baseline_state_df    = find_heating_output(temp_price_df, house, "baseline")
+    thermostat_state_df  = find_heating_output_thermostat(temp_price_df, house)
+
+    return optimal_state_df, baseline_state_df, thermostat_state_df

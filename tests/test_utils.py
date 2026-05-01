@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 
 from strom import optimization_utils
-from strom.optimization_utils import House, smooth_temperature, calculate_baseline_target, find_heating_output
+from strom.optimization_utils import House, smooth_temperature, calculate_baseline_target, find_heating_output, find_heating_output_thermostat
 from strom.api_utils import read_api_key as get_api_key, get_weather_data, get_price_series
 from strom.data_utils import get_temp_price_df, join_data, regularize_df
 
@@ -177,6 +177,46 @@ def test_find_heating_output_invalid_mode():
 
 
 # ---------------------------------------------------------------------------
+# optimization_utils — find_heating_output_thermostat
+# ---------------------------------------------------------------------------
+
+def test_find_heating_output_thermostat_columns():
+    df = make_temp_price_df(n_hours=24)
+    house = House()
+    result = find_heating_output_thermostat(df, house)
+    for col in ('HeaterOutput', 'CoolingOutput', 'InteriorTemperature', 'WallTemperature', 'Cost'):
+        assert col in result.columns
+        assert not result[col].isnull().any()
+
+
+def test_find_heating_output_thermostat_control_bounds():
+    df = make_temp_price_df(n_hours=24)
+    house = House()
+    result = find_heating_output_thermostat(df, house)
+    assert (result['HeaterOutput']  >= 0).all() and (result['HeaterOutput']  <= 1).all()
+    assert (result['CoolingOutput'] >= 0).all() and (result['CoolingOutput'] <= 1).all()
+
+
+def test_find_heating_output_thermostat_cold_activates_heater():
+    # Exterior at 5°C — well below T_min=18, heater must fire
+    df = make_temp_price_df(n_hours=24, base_temp=5.0)
+    house = House(Q_cooling=0.0)
+    result = find_heating_output_thermostat(df, house)
+    assert result['HeaterOutput'].sum() > 0
+
+
+def test_find_heating_output_thermostat_comfortable_stays_off():
+    # Exterior at 21°C — naturally inside [18, 24], system stays off.
+    # Must use freq="5min": the air time constant (~6.5 min) makes forward
+    # Euler unstable at dt=1h, consistent with how case studies are run.
+    df = make_temp_price_df(n_hours=48, base_temp=21.0)
+    house = House(T_interior_init=21.0, T_wall_init=21.0, Q_cooling=0.0, freq="5min")
+    result = find_heating_output_thermostat(df, house)
+    assert result['HeaterOutput'].sum() == 0.0
+    assert result['Cost'].sum() == 0.0
+
+
+# ---------------------------------------------------------------------------
 # optimization_utils — compare_output_costs (integration via live API)
 # ---------------------------------------------------------------------------
 
@@ -184,7 +224,8 @@ def test_find_heating_output_invalid_mode():
 def test_compare_output_costs():
     temp_price_df = get_temp_price_df()
     house = optimization_utils.House(P_base=0.0, Q_cooling=2.0)
-    optimal_state_df, baseline_state_df = optimization_utils.compare_output_costs(temp_price_df, house)
+    optimal_state_df, baseline_state_df, thermostat_state_df = optimization_utils.compare_output_costs(temp_price_df, house)
     assert baseline_state_df.isnull().values.any() == False
     assert optimal_state_df.isnull().values.any() == False
+    assert thermostat_state_df.isnull().values.any() == False
     assert optimal_state_df['Cost'].sum() <= baseline_state_df['Cost'].sum()

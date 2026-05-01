@@ -20,7 +20,7 @@ i_init = 22 * len(temp_price_df) // 30
 i_end  = 29 * len(temp_price_df) // 30
 temp_price_df = temp_price_df[i_init:i_end]
 
-optimal_state_df, baseline_state_df = compare_output_costs(temp_price_df, house)
+optimal_state_df, baseline_state_df, thermostat_state_df = compare_output_costs(temp_price_df, house)
 
 fig = plot_combined_cases(optimal_state_df, baseline_state_df)
 fig.savefig("./plots/compare_costs_temps_Barcelona_23-29_Nov.png")
@@ -28,6 +28,7 @@ fig.savefig("./plots/compare_costs_temps_Barcelona_23-29_Nov.png")
 compute_and_save_results(
     optimal_state_df,
     baseline_state_df,
+    thermostat_state_df,
     "./results/results_Barcelona_23-29_Nov.txt",
     house,
     label="Barcelona — 23rd to 29th November 2024",

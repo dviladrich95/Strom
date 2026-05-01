@@ -11,7 +11,7 @@ with open("config/house_config.json") as f:
     house_cfg = json.load(f)
 house = House(**house_cfg, freq="5min")
 
-optimal_state_df, baseline_state_df = compare_output_costs(temp_price_df,house)
+optimal_state_df, baseline_state_df, thermostat_state_df = compare_output_costs(temp_price_df, house)
 
 fig = plot_combined_cases(optimal_state_df, baseline_state_df)
 # Save as png

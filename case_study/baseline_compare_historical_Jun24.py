@@ -12,26 +12,32 @@ with open("config/house_config.json") as f:
     house_cfg = json.load(f)
 house = House(**house_cfg, freq="5min")
 
-temp_price_df = pd.read_csv('data/Temp_Price_Barcelona_Nov.csv', index_col="Timestamp", parse_dates=["Timestamp"])
-temp_price_df['ExteriorTemperature'] = remove_temperature_spikes(temp_price_df['ExteriorTemperature'])
+temp_price_df = pd.read_csv(
+    "data/Temp_Price_Barcelona_Mar23_Mar25.csv",
+    index_col="Timestamp",
+    parse_dates=["Timestamp"],
+)
+assert isinstance(temp_price_df.index, pd.DatetimeIndex)
 
-# remove the first half of the data
-df_half = len(temp_price_df) // 2
-temp_price_df = temp_price_df[df_half:]
+temp_price_df["ExteriorTemperature"] = remove_temperature_spikes(
+    temp_price_df["ExteriorTemperature"]
+)
+temp_price_df = temp_price_df[
+    (temp_price_df.index.year == 2024) & (temp_price_df.index.month == 6)
+]
 
 optimal_state_df, baseline_state_df, thermostat_state_df = compare_output_costs(temp_price_df, house)
 
 fig = plot_combined_cases(optimal_state_df, baseline_state_df)
-# Save as png
-fig.savefig("./plots/compare_costs_temps_Barcelona_Nov.png")
+fig.savefig("./plots/compare_costs_temps_Barcelona_Jun24.png")
 
 compute_and_save_results(
     optimal_state_df,
     baseline_state_df,
     thermostat_state_df,
-    "./results/results_Barcelona_Nov.txt",
+    "./results/results_Barcelona_Jun24.txt",
     house,
-    label="Barcelona — November 2024",
+    label="Barcelona — June 2024",
 )
 
 plt.close()
