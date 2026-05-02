@@ -1,240 +1,262 @@
 # Case Study: Smart Heating Optimization
 
+<!-- TODO (second pass): unify narrator voice — smooth and sober, between the casual flourishes and the formal math notation. Currently oscillates. -->
+<!-- TODO (second pass): expand citations beyond [^pean2018] — MPC-in-buildings literature (e.g. Oldewurtel et al.) and RC thermal modeling references. -->
+
 ## Abstract
 
-<!-- TODO: update savings % once two-year backtest with thermostat baseline completes -->
-**~X% cost savings** over two years, zero comfort violations, running live on a smart plug in Barcelona.
+**27% lower electricity cost** over two years. On the days the house charges itself with cheap heat, it naturally runs warmer too. It runs live on a €15 smart plug and takes a few seconds to solve.
 
-A price-aware heating and cooling optimizer for households on dynamic electricity tariffs. Uses a physics-derived thermal model of the building and a linear program solved in milliseconds to shift energy purchases to cheap hours — keeping the house comfortable while automatically exploiting intra-day price swings. The same principles underpin industrial demand-response systems coordinating thousands of devices across European grids.
+The system uses a physics model of the building and a linear program to decide when to heat and when to wait, using day-ahead forecasts of electricity prices and outdoor temperature. The optimization method guarantees that the temperature stays within the comfort band, and it is this reliability that allows new energy companies to scale the same approach to thousands of homes across European grids.
+
+![Two-year comparison, Mar 2023 – Mar 2025](_static/images/compare_costs_temps_Barcelona_Mar23_Mar25.png)
+*Optimal vs. thermostat, March 2023 – March 2025.*
 
 ---
 
 ## 0. The Story
 
-[Jan Balanya](https://janbalanya.com/) wanted to automate his electric stove around dynamic electricity tariffs — prices that swing hour by hour — without checking an app manually every hour.
+[Jan Balanya](https://janbalanya.com/) is on a dynamic electricity tariff: prices change every hour, cheapest at night, expensive in the morning. He had a plug-in electric heater at home, which makes heating even more expensive, and he wanted to take advantage of the price swings automatically, without checking an app.
 
-What started as a weekend project is a full-stack applied mathematics exercise: API data collection from energy and weather services, physical modeling of the building's thermal dynamics, convex optimization to produce the heating schedule, and direct IoT control of a smart plug to execute it. Each layer connects to the next, and each has a real engineering justification.
-
----
-
-## 1. The Business Problem
-
-**Stakeholder:** Individual household on a variable tariff.
-
-**Context:** Spain has one of Europe's highest shares of renewable generation, driving large intra-day price swings (the "duck curve"). As solar penetration grows, the spread between cheap and expensive hours keeps widening, and dynamic pricing plans now expose these fluctuations directly to consumers.
-
-**Opportunity:** *Load shifting* — consuming energy at lower-cost times without changing total consumption. Heating and cooling are attractive targets: large loads, and comfort tolerates a few degrees and several hours of flexibility, which is exactly the slack needed.
-
-**Objective:** Minimize the electricity bill while keeping indoor temperature within a defined comfort band. A physical model of the building lets us formulate this as a linear program: solved in milliseconds, globally optimal, and fully interpretable — "pre-heat fully between 02:00 and 05:00 when the price hits its floor, then coast through the morning peak."
-
-**Price data realism:** ENTSO-E day-ahead prices are at megawatt industrial scale, where prices can go zero or negative during oversupply. A real consumer tariff always has a minimum — network charges, taxes, and provider margins don't disappear. A constant floor $P_{base}$ is added to all ENTSO-E prices before optimization.
-
-**Value proposition:** Lower bills for consumers; demand-side flexibility for the grid.
+The result is a full-stack project: it pulls price and weather forecasts from APIs, builds a physical model of the building's thermal behaviour, solves an optimization problem to find the cheapest heating schedule, and sends commands to a smart plug via a custom interface built to control the plug-in heater remotely.
 
 ---
 
-## 2. Intuitive Explanation of the Dynamics
+## 1. The Business Perspective
 
-The key reframe: *this is a thermal storage problem*. A house stores heat the way a battery stores charge — and once we see it that way, the path to a formal model becomes clear.
+Renewable energy is cheap but volatile, depending on weather conditions. Solar overproduction drives prices to near zero some afternoons, then demand peaks push them back up. People on dynamic tariffs see this directly in their bills.
 
-**Why thermal storage?** Electricity is the most perishable good there is: any surplus vanishes immediately. Thermal mass is one of the cheapest storage forms available — pre-heat the house when power is cheap, let it coast through expensive hours.
+The opportunity is load shifting: buy energy when it's cheap, not when you need it. Heating is a good target because thermal mass gives you slack: a few degrees and a few hours of flexibility before comfort suffers. The optimizer exploits that slack systematically.
 
-**Building as a battery:** Picture two chambers connected by a narrow pipe. The *air chamber* is thin — a small amount of heat raises its temperature quickly. The *wall chamber* is wide — it absorbs a lot of energy before its temperature moves much. A second, leaky pipe connects the wall to the outdoors; how narrow that pipe is reflects how well-insulated the building is. Chamber volumes map to *thermal capacity* (energy per degree), pipe widths map to *thermal resistance* (how fast heat leaks).
-
-**Key terms:**
-- *Heat Capacity ($C$):* Energy required to raise a component's temperature by 1 °C.
-- *Thermal Resistance ($R$):* Rate at which heat leaks between two components (or to the outside).
-- *Comfort Band:* The acceptable temperature range — the hard constraint the optimizer must never violate.
-
-**Newton's law of cooling** governs how each lump exchanges heat with its neighbours:
-
-$$C \frac{dT}{dt} = \frac{T_{\text{neighbour}} - T}{R} + Q$$
-
-Each interface in the building adds one such equation to the system. Active cooling follows the same model with $Q_{cool}$ entering with a negative sign.
+The objective is simple: minimize the electricity bill while keeping the temperature inside a defined comfort band at all times. With a linear model of the building, this becomes a linear program that can be solved efficiently and reliably, guaranteed to be globally optimal and interpretable.
 
 ---
 
-## 3. Modeling Alternatives & Model Selection
+## 2. How the Building Works as a Battery
 
-A building can be modeled at many levels of granularity. The right choice depends on what dynamics matter for the application.
+Electricity is perishable: the grid has to match supply and demand in real time. The house's thermal mass lets us store that cheap electricity by heating it up, then give off that heat over the next hours, spreading out its use.
 
-| Model | Granularity | Pros | Cons |
-|---|---|---|---|
-| **1R1C (1 lump)** | Air only | Extremely simple | Misses wall dynamics; over-optimistic about heat retention |
-| **2R2C (2 lumps — chosen)** | Air + wall | Captures slow wall vs. fast air dynamics; remains linear | Lumped approximation |
-| **White-box / FEM (e.g. EnergyPlus)** | Full spatial | Highly accurate | Computationally heavy; not suited for real-time optimization |
+The physics of each part follows Newton's law of cooling:
 
-**Why 2R2C:** The wall stores energy over hours, not minutes — this is the heat-battery effect. A 1R1C model collapses air and wall into one lump and loses this dynamic entirely. A full FEM model adds resolution that isn't needed here and breaks the linearity required to embed the model inside a convex optimization. The 2R2C is the minimal model that captures the essential physics.
+$$C \frac{dT_{\text{interior}}}{dt} = \frac{T_{\text{exterior}} - T_{\text{interior}}}{R} + Q$$
+
+| Symbol | Meaning | Units |
+|---|---|---|
+| $C$ | Heat capacity: energy needed to raise temperature by 1°C | kWh/°C |
+| $R$ | Thermal resistance: how hard heat flows between two regions | °C/kW |
+| $T$ | Temperature (interior, exterior, etc.) | °C |
+| $\tau = R \cdot C$ | Timescale: time to halve a temperature gap | h |
+| $Q$ | Net thermal power injected into the interior | kW |
+
+The injected power $Q$ is the *net* thermal flow: positive when heating, negative when cooling. In practice it is the difference of two non-negative duty cycles,
+
+$$Q = Q_h\,\alpha_h(t) - Q_c\,\alpha_c(t),$$
+
+where $Q_h, Q_c$ are the heater and cooler nominal powers and $\alpha_h, \alpha_c \in [0,1]$ are their PWM duty cycles. Splitting heating and cooling into two independent variables keeps the optimization convex; a single signed $Q$ would force the optimizer to choose its sign, breaking linearity.
+
+But homes are not a single lump of mass. They are shells that separate a thin envelope of air — which we want to hold inside a comfortable temperature range — from the exterior. The radiator heats the air, the air heats the walls, and heat eventually leaks outside.
+
+So the model has two meaningful lumps. The air heats up and cools down in minutes; the wall's thermal mass takes days to fully charge or discharge. A thermal resistance between them measures how hard it is for heat to pass; another resistance to the outside reflects the insulation quality.
+
+Pre-heating the wall is what actually extends the coasting time inside the comfort zone — it is the slow, large reservoir that keeps the house warm after the heater turns off.
+
+The same logic runs in reverse for cooling: the optimizer can pre-cool during cheap night hours so the house can coast through a hot afternoon, with $\alpha_c$ replacing $\alpha_h$ in the same equations.
 
 ---
 
-## 4. The Physical Model
+## 3. The Physical Model
 
-### 4.1 The ODE System
+### 3.0 Which Model to Use?
 
-With 2R2C selected, the building maps to an electrical circuit: thermal masses → capacitors, insulation → resistors, heater power → controlled current source.
+The two natural lumped-parameter options:
 
-Applying Newton's law of cooling at each interface gives one ODE per lump:
+| Model | What it captures | The trade-off |
+|---|---|---|
+| **1R1C** | Single air+wall lump | Simple and useful for grid-scale aggregation, but misses the air/wall split — it cannot tell how warm people actually feel inside |
+| **2R2C** | Air + wall | Two time constants, still linear; captures the heat-battery effect that drives both comfort and cost |
 
-At the air–wall interface:
-$$C_{air} \frac{dT_{air}}{dt} = \frac{T_{wall} - T_{air}}{R_{int}} + Q_{heater}$$
+> *Beyond lumped models lie full spatial simulations (FEM-based tools like EnergyPlus) that resolve geometry and localized heat leaks. They are accurate but expensive — useful for design and certification, not for real-time control.*
 
-At the wall–exterior interface:
+2R2C is the minimal model that captures comfort, since it separates the fast-responding air from the slow thermal reservoir. It is also linear, which means the cost-minimization problem in §4 can be solved exactly using a standard linear program, with hard comfort constraints rather than soft penalties.
+
+---
+
+### 3.1 Two Equations
+
+Map the building to a circuit: thermal masses are capacitors, insulation layers are resistors, the heater and cooler are current sources. Newton's law at each node gives one differential equation per part.
+
+For the air:
+$$C_{air} \frac{dT_{air}}{dt} = \frac{T_{wall} - T_{air}}{R_{int}} + Q_h\,\alpha_h(t) - Q_c\,\alpha_c(t)$$
+
+For the wall:
 $$C_{wall} \frac{dT_{wall}}{dt} = \frac{T_{air} - T_{wall}}{R_{int}} + \frac{T_{ext} - T_{wall}}{R_{ext}}$$
 
-### 4.2 State-Space Form
+The air node receives the net injection from heater and cooler — both with non-negative duty cycles $\alpha_h, \alpha_c \in [0,1]$ — and exchanges with the wall. The wall exchanges with the air and slowly leaks to the outside.
 
-The two coupled ODEs can be written in matrix form:
+### 3.2 Matrix Form
 
-$$\dot{\mathbf{T}} = A\mathbf{T} + B\mathbf{u}_t + \mathbf{d}_t$$
+Written together:
 
-| Symbol | Meaning |
+$$\frac{d\mathbf{T}(t)}{dt} = A\,\mathbf{T}(t) + B\,\mathbf{u}(t) + \mathbf{d}(t)$$
+
+| Symbol | What it is |
 |---|---|
-| $\mathbf{T} = [T_{air},\ T_{wall}]^\top$ | State vector |
-| $\mathbf{u}_t = [Q_{heater} \cdot u_t,\ 0]^\top$, $u_t \in [0,1]$ | Control vector; only air lump receives direct heat input |
-| $A$ | Conductance matrix; off-diagonal = heat pathway, diagonal = total loss rate |
-| $B$ | Input matrix; scales by inverse capacity |
-| $\mathbf{d}_t$ | Time-varying disturbance carrying exterior temperature forcing |
+| $\mathbf{T}(t) = [T_{air}(t),\ T_{wall}(t)]^\top$ | The two temperatures (the system's state) |
+| $\mathbf{u}(t) = [\alpha_h(t),\ \alpha_c(t)]^\top$, $\alpha_h, \alpha_c \in [0,1]$ | Heater and cooler duty cycles |
+| $A$ | How temperatures drive each other; off-diagonals are heat pathways, diagonals are loss rates |
+| $B$ | Generic input-gain matrix. Only the air row is excited by the current actuators (heater positively, cooler negatively); the wall row stays zero unless an interior-wall heater is added later |
+| $\mathbf{d}(t)$ | Exterior temperature forcing |
 
-$$A = \begin{pmatrix} -\dfrac{1}{R_{int} C_{air}} & \dfrac{1}{R_{int} C_{air}} \\[8pt] \dfrac{1}{R_{int} C_{wall}} & -\dfrac{\frac{1}{R_{int}} + \frac{1}{R_{ext}}}{C_{wall}} \end{pmatrix}, \qquad B = \begin{pmatrix} \dfrac{1}{C_{air}} & 0 \\[8pt] 0 & \dfrac{1}{C_{wall}} \end{pmatrix}$$
+$$A = \begin{pmatrix} -\dfrac{1}{R_{int} C_{air}} & \dfrac{1}{R_{int} C_{air}} \\[8pt] \dfrac{1}{R_{int} C_{wall}} & -\dfrac{\frac{1}{R_{int}} + \frac{1}{R_{ext}}}{C_{wall}} \end{pmatrix}, \qquad B = \begin{pmatrix} \dfrac{Q_h}{C_{air}} & -\dfrac{Q_c}{C_{air}} \\[8pt] 0 & 0 \end{pmatrix}$$
 
-With numerical values ($C_{air}=0.26$, $C_{wall}=19.1$, $R_{int}=0.42$, $R_{ext}=8.86$):
+With the actual parameter values:
 
-$$A \approx \begin{pmatrix} -9.16 & 9.16 \\[4pt] 0.125 & -0.131 \end{pmatrix}$$
+$$A \approx \begin{pmatrix} -9.16 & 9.16 \\[4pt] 0.125 & -0.131 \end{pmatrix}\ \text{hr}^{-1}$$
 
-The diagonal entries differ by a factor of ~70, reflecting strong separation of timescales between air and wall.
+The diagonal entries differ by a factor of 70. That's the model's way of saying what we already knew: air responds 70 times faster than the wall.
 
-**On $\mathbf{d}_t$:** the exterior temperature term $T_{ext}/R_{ext}$ from the wall–exterior flux cannot enter $A$ (not a state variable) nor $B$ (not a control), so it becomes a time-varying forcing:
+On $\mathbf{d}(t)$: the exterior temperature term from the wall equation splits when you expand it. The part proportional to $T_{wall}$ gets absorbed into $A_{22}$, since it is already a state. The part proportional to $T_{ext}$ has nowhere else to go, since $T_{ext}$ is something we measure but do not control:
 
-$$\mathbf{d}_t = \begin{pmatrix} 0 \\[4pt] \dfrac{T_{ext}(t)}{R_{ext}\, C_{wall}} \end{pmatrix}$$
+$$\mathbf{d}(t) = \begin{pmatrix} 0 \\[4pt] \dfrac{T_{ext}(t)}{R_{ext}\, C_{wall}} \end{pmatrix}$$
 
-### 4.3 Parameters and Timescales
+### 3.3 Parameters and Timescales
 
-Parameters identified from Péan et al. (2018)[^pean2018] for a multi-family apartment in Sant Adrià de Besòs (Barcelona), via PRBS excitation of a TRNSYS model validated against metered data.
+Parameters are taken from Péan et al. (2018)[^pean2018], who identified them for a multi-family apartment in Barcelona. We adopt them as a reasonable starting point for an apartment of similar build; full system identification on Jan's specific apartment is left as future work.
 
-| Parameter | Value | Units | Description |
+| Parameter | Value | Units | What it measures |
 |---|---|---|---|
-| $C_{air}$ | 0.26 | kWh/°C | Heat capacity of indoor air |
-| $C_{wall}$ | 19.1 | kWh/°C | Heat capacity of the insulated wall |
-| $R_{int}$ | 0.42 | °C/kW | Thermal resistance, air–wall |
-| $R_{ext}$ | 8.86 | °C/kW | Thermal resistance, wall–outside |
-| $Q_{heater}$ | 2.0 | kW | Heater power |
+| $C_{air}$ | 0.26 | kWh/°C | Energy needed to heat the air by 1°C |
+| $C_{wall}$ | 19.1 | kWh/°C | Same for the wall, 73× larger |
+| $R_{int}$ | 0.42 | °C/kW | Resistance between air and wall |
+| $R_{ext}$ | 8.86 | °C/kW | Insulation from outside |
+| $Q_h$ | 2.0 | kW | Heater nominal power |
+| $Q_c$ | 2.0 | kW | Cooler nominal power |
 | $T_{min}$ / $T_{max}$ | 18 / 24 | °C | Comfort band |
 
-**Timescales:**
-- $\tau_{air} = R_{int} \cdot C_{air} \approx 6.5\ \text{min}$ — air responds within minutes
-- $\tau_{wall} = R_{ext} \cdot C_{wall} \approx 7\ \text{days}$ — wall stores heat over days
+The two timescales:
+- $\tau_{air} = R_{int} \cdot C_{air} \approx 6.5\ \text{min}$: air responds in minutes
+- $\tau_{wall} = R_{ext} \cdot C_{wall} \approx 7\ \text{days}$: wall holds heat for nearly a week
 
-**Air-wall gap at full heater output** ($u=1$, quasi-steady):
-$$\Delta T \approx R_{int} \cdot Q_{heater} = 0.42 \times 2.0 = 0.84\ ^\circ\text{C}$$
-
----
-
-## 5. Optimization Method & Alternatives
-
-**The challenge:** find the optimal heater command sequence over a 24-hour horizon, subject to linear system dynamics and hard temperature constraints.
-
-| Method | Pros | Cons |
-|---|---|---|
-| **Rule-based (thermostat)** | Simple, off-the-shelf | Myopic; no price awareness; will not pre-heat |
-| **Reinforcement Learning** | No explicit model needed | No hard comfort guarantees — a single cold night loses user trust permanently |
-| **Linear MPC (chosen)** | Global optimum; hard constraints by construction; re-solves hourly with fresh forecasts | Requires a linear model |
-
-**Why linear optimization:** With a linear physical model and a linear cost function (power × price), the full problem is a linear program. CVXPY dispatches to highly optimized backends (CLARABEL, OSQP) and finds the global optimum in milliseconds. Temperature bounds enter as hard constraints, not soft penalties — comfort is guaranteed, not just encouraged.
-
-**Discretization:** ODEs are discretized with a forward Euler step of $\Delta t = 1\text{h}$:
-
-$$\mathbf{T}_{t+1} = \mathbf{T}_t + \Delta t \left( A\mathbf{T}_t + B\mathbf{u}_t + \mathbf{d}_t \right)$$
-
-Each timestep becomes a linear equality constraint. The full LP — 24 constraints, $u_t \in [0,1]$ decision variable, comfort bounds as inequality constraints, day-ahead price vector as cost coefficient — is implemented in `find_heating_output` (`strom/optimization_utils.py`, line 96).
-
-**Euler stability:** $|1 + \Delta t \cdot \lambda| < 1$ requires $\Delta t < 13\ \text{min}$ for the fast eigenmode.
-- *Real-time mode:* tolerates $\Delta t = 1\text{h}$ because only `HeaterOutput[0]` is ever applied; drift never accumulates.
-- *Backtests:* run at $\Delta t = 5\ \text{min}$ to stay inside the stability bound, since there is no live feedback to correct accumulated error.
+At full heater power and no cooling ($\alpha_h = 1, \alpha_c = 0$), the air runs about 0.84°C warmer than the wall in steady state, a small but measurable gap that shows up in the plots:
+$$\Delta T \approx R_{int} \cdot Q_h = 0.42 \times 2.0 = 0.84\ ^\circ\text{C}$$
 
 ---
 
-## 6. Tools & Tech Stack
+## 4. The Optimization
 
-| Tool | Role |
+The task: pick heater and cooler duty cycles $\alpha_h(t), \alpha_c(t) \in [0,1]$ over the next 24 hours so that the indoor temperature stays inside the comfort band and the total electricity cost is minimized. Because only the *next step* is ever applied — the LP re-solves every interval with a fresh forecast — this is a **Model Predictive Control** (MPC) loop.
+
+**Why not a thermostat:** it heats when cold and stops when warm. No awareness of what electricity costs at 03:00 vs. 09:00, so it cannot pre-heat. All the savings in this project come from that look-ahead.
+
+**Why not reinforcement learning:** RL can learn complex policies, but it cannot give hard guarantees. A temperature constraint entered as a soft penalty is just that — soft. One cold night is enough to lose a user's trust in an automated system.
+
+**Why a linear program:** the physical model is linear, the cost function (power × price) is linear, and the constraints (comfort band, duty-cycle bounds) are linear. A linear program finds the global optimum exactly, with the comfort band as a hard constraint, not a suggestion.
+
+To embed the continuous dynamics in the LP, each ODE step becomes a linear equality constraint using forward Euler with $\Delta t = 5\ \text{min}$:
+
+$$\mathbf{T}(t+1) = \mathbf{T}(t) + \Delta t \left( A\,\mathbf{T}(t) + B\,\mathbf{u}(t) + \mathbf{d}(t) \right)$$
+
+That step size is set by stability: forward Euler is only stable when $\Delta t < 2/|\lambda_{\text{fast}}| \approx 13\ \text{min}$ for the air's fast eigenmode. A 24-hour horizon at 5 min gives 288 timesteps, so the full LP has roughly $288 \times 2$ states + $288 \times 2$ controls $\approx 1{,}150$ decision variables, plus the dynamics, comfort, and duty-cycle constraints.
+
+CVXPY assembles the problem and ships it to **CLARABEL**, an interior-point conic solver. In practice, the solve itself is the cheap part — milliseconds — while CVXPY's symbolic constraint construction takes a few seconds.
+
+<!-- TODO: quantify build vs. solve times exactly. The ~1,150-variable LP is small and worth a speed test against alternative formulations (e.g. JuMP/Julia, sparse direct LP) to see whether the constraint-construction overhead is intrinsic or Python-side. -->
+
+The continuous duty cycles $\alpha_h, \alpha_c \in [0,1]$ output by the LP are realized on the physical relay through PWM: the smart plug spends a fraction $\alpha$ of each interval ON and the rest OFF, time-averaging to the requested mean power.
+
+One practical detail: ENTSO-E wholesale prices can go negative during oversupply, but a real household tariff never does — there are always network charges, taxes, and margins. A constant floor $P_{base}$ is added to all prices before the optimization runs.
+
+---
+
+## 5. Tools
+
+The deployment splits cleanly into two pipelines: a **historical-data backtest** that produces the multi-year savings numbers, and a **live controller** that runs the same LP every interval against a real plug. The historical pipeline is where the analytical work lives; the live loop is short and conventional.
+
+| Tool | What it does here |
 |---|---|
-| **Python + CVXPY** | LP formulation and solving; chunked monthly solve for multi-year backtests |
-| **pandas / numpy** | Time-series manipulation |
-| **ENTSO-E API** | Day-ahead electricity price forecasts |
-| **OpenWeatherMap API** | Exterior temperature forecasts |
-| **python-kasa** | Async control of the TP-Link smart plug |
+| **Python + CVXPY** | Formulates the LP; chunked monthly solves stitch a two-year horizon |
+| **CLARABEL** | Interior-point conic solver — lightweight, robust, and well-suited to LPs of this size |
+| **pandas / numpy** | Time-series alignment, resampling, and per-month accounting |
+| **ENTSO-E API** | Day-ahead wholesale electricity prices for the historical backtest and the live forecast |
+| **OpenWeatherMap API** | Historical and forecast exterior temperatures |
+| **python-kasa** | Sends ON/OFF commands to the TP-Link smart plug in the live loop |
+
+The historical pipeline pulls multi-year price and weather series, aligns them onto a common 5-minute grid, and feeds them into the chunked monthly solve in §6. The live loop is a thin wrapper: at each interval it pulls the freshest forecast, solves the LP, and applies the first step's $\alpha_h$ via PWM on the relay.
 
 ---
 
-## 7. Results
+## 6. Results
 
-All comparisons are against a **deadband thermostat**: heat when $T_{air} < T_{min}$, cool when $T_{air} > T_{max}$, off otherwise. No price awareness, no look-ahead. This is the realistic baseline — what a household would already have without the optimizer.
+The comparison throughout is a **deadband thermostat**: heat when the temperature drops below $T_{min}$, cool when it rises above $T_{max}$, off otherwise. No price awareness, no forecasting. That's what a household without this system would run.
 
-### One Week — 23–29 November 2024
+### One Week: 23–29 November 2024
 
 ![Weekly comparison, 23–29 Nov 2024](_static/images/compare_costs_temps_Barcelona_23-29_Nov.png)
-*Optimal vs. thermostat policy across one week, 23–29 November 2024.*
+*Optimal vs. thermostat, 23–29 November 2024.*
 
-Around 24 November, electricity prices drop to nearly zero. The optimizer sees this in the day-ahead forecast and fully pre-charges the heat battery — pushing $T_{air}$ to $T_{max}$ — then coasts for the following days without heating as prices return to normal. The thermostat cannot do this: it has no look-ahead, so it heats reactively and pays peak prices.
+Around 24 November, electricity prices fall to nearly zero. The optimizer sees this a day ahead and runs the heater flat-out, pushing the house to the top of the comfort band. Then it coasts: no heating for two days while prices are high and the house slowly gives back the stored heat. The thermostat can't do any of this. It just reacts.
 
-- **48% cost savings** vs. thermostat baseline — a fair comparison since November exterior temperatures stay well below $T_{min}$, so both strategies are actively heating throughout.
-- The optimizer buys *more* total energy than the thermostat: **98 kWh vs 78 kWh** — savings come from *when* energy is purchased, not from consuming less.
-- Interior range [18.0, 21.7] °C; max swing 3.7 °C; zero comfort violations.
-- During the pre-charge on 24–25 Nov, $T_{air}$ settles ~1 °C above $T_{wall}$, matching the §4.3 prediction $\Delta T \approx 0.84\ ^\circ\text{C}$.
+The result: **48% cost savings** over the week, while the optimizer actually bought *more* energy: 98 kWh vs 78 kWh. Lower cost from buying more. That's the whole trick: timing matters more than quantity.
+
+During the pre-charge on 24–25 Nov, the air temperature ran about 1°C above the wall, exactly what the model predicts ($\Delta T \approx 0.84\ ^\circ\text{C}$, §3.3). The theory checks out in the data.
 
 ### November 2024
 
 ![Monthly comparison, November 2024](_static/images/compare_costs_temps_Barcelona_Nov.png)
-*Optimal vs. thermostat policy across November 2024.*
+*Optimal vs. thermostat, November 2024.*
 
-The week result is not a cherry-pick — the load-shifting pattern repeats consistently across the month wherever the price schedule creates cheap windows.
+The week wasn't cherry-picked. The same pattern repeats across the full month wherever the price schedule offers a cheap window: **29% savings**, again buying more total energy (187 kWh vs 165 kWh). November is heating-dominated, so the optimizer hugs the lower edge of the comfort band most of the time — only pushing higher when pre-charging before a price spike. In summer the pattern reverses: with cooling as the dominant cost, the optimizer hugs the upper edge and pre-cools toward the lower bound when night prices drop.
 
-- **29% cost savings** over the full month; optimizer again buys more total energy (187 kWh vs 165 kWh).
-- Interior range [18.0, 21.5] °C; zero comfort violations.
+### Two-Year Backtest: March 2023 to March 2025
 
-### Two-Year Backtest — March 2023 to March 2025
+Running the full two years as a single LP isn't feasible: at 5-minute steps that's 210,000 timesteps, too large for CVXPY to handle efficiently. Instead, each calendar month is solved independently, with the final temperatures of month $N$ passed as initial conditions to month $N+1$. Each month is saved to disk so the computation can resume if anything fails.
 
-The two-year window is solved as a *chunked monthly LP*: each calendar month is an independent LP; the final state $(T_{air}, T_{wall})$ of month $N$ seeds month $N+1$. Each chunk is persisted to disk for resumability. This decomposition is valid because $\tau_{wall} \approx 7\ \text{days}$ — roughly four wall time-constants fit inside a 30-day chunk, giving meaningful scheduling slack. The one honest trade-off: each monthly LP has no incentive to keep the heat battery charged at the end of the month, so there is a small seam suboptimality at month boundaries.
+This works because the wall's 7-day timescale fits comfortably inside a 30-day window, leaving enough room within each month for meaningful pre-heating decisions. The one trade-off: the optimizer doesn't know about next month, so it has no incentive to keep the heat battery charged at the end of a month. There's a small suboptimality at each boundary.
 
 ![Two-year comparison, Mar 2023 – Mar 2025](_static/images/compare_costs_temps_Barcelona_Mar23_Mar25.png)
-*Optimal vs. thermostat policy over two years, heating and cooling included.*
-
-<!-- TODO: update table and figures below once backtest with thermostat baseline completes -->
+*Optimal vs. thermostat, March 2023 – March 2025.*
 
 | | Thermostat | Optimal | Savings |
 |---|---|---|---|
-| **Total cost** | — € | — € | **~X%** |
-| **Heating energy** | — kWh | — kWh | — |
-| **Cooling energy** | — kWh | — kWh | — |
-| **Comfort violations** | — | 0 | — |
+| **Total cost** | 561.71 € | 409.47 € | **27%** |
+| **Heating energy** | 5,699 kWh | 6,237 kWh | — |
+| **Cooling energy** | 735 kWh | 869 kWh | — |
 
-**Seasonal pattern:** Spring and autumn months dominate savings — exterior temperature sits near or inside the comfort band, creating large scheduling slack. December and January hover around 10–15% — the heater runs nearly full-time compensating heat loss, leaving little room for cheap-hour shifting.
+The optimizer spends less while using more energy. Savings come entirely from timing.
 
-**Swing amplitude:** Mean ~1 °C, P95 ~2 °C. The tail matters for user experience — individual large excursions erode trust faster than the mean suggests. A rate constraint on $\Delta T$ per timestep is the natural next step.
+The blended 27% number masks three regimes:
 
-**Comfort:** $T_{min}$ and $T_{max}$ never breached across all 25 months.
+- **Free-coast months** (March 2023, October 2023, June 2024) cost essentially zero for both systems — the exterior temperature stays inside the comfort band, so no actuation is required. These months confirm the optimizer correctly does nothing when nothing is needed; they are sanity checks, not wins.
+- **Shoulder seasons** (April, May, July, August, late autumn, March 2025) are where active control matters most: wide price swings combined with ample comfort-band slack let the optimizer save **35–70%** on bills of 5–35 €.
+- **Deep winter** (December, January, February) saturates the heater — it runs nearly full-time just to compensate heat loss, leaving little slack for cheap-hour shifting. Savings here drop to **14–22%**, but these months also dominate the absolute bill. That weighting is why the blended figure (27%) sits closer to deep-winter savings than to shoulder savings.
 
----
+There is a side effect worth naming. Buying when prices are at or near zero means buying surplus — the periods of solar overproduction or low overnight demand that the grid would otherwise have to spill or curtail. At household scale this is a footnote; at fleet scale, optimizers like this one act as distributed flexibility, absorbing renewable overproduction the grid cannot use directly.
 
-## 8. Conclusion
+**Temperature smoothness.** Per-step changes stay below 0.7°C / 5 min. Peak-to-peak swing amplitudes within the comfort band average ~1°C, with a 95th percentile of ~2°C; the maximum observed amplitude reaches the full 6°C band on a handful of days when the optimizer fully exploits both bounds — typically by riding from the lower edge to the upper edge during a deep pre-charge.
 
-This project demonstrates full-stack applied mathematics in practice: from a homeowner's informal request to a working system through physics modeling, optimization, and IoT control. At each step the coupling runs both directions — the physics is only as complex as the optimization needs, the optimization only as fast as the model permits. No layer is over- or under-engineered.
-
-The result is a globally optimal, interpretable schedule with mathematically guaranteed comfort. A human operator can look at the 24-hour plan and understand *why* the optimizer pre-heats at 02:00 and coasts through 09:00. This auditability — absent from black-box ML approaches — matters for user trust and regulatory compliance.
-
----
-
-## 9. Future Work
-
-- Coordinator-level optimization across multiple devices or households
-- Stochastic optimization under price and weather uncertainty
-- V2G energy management (see separate study)
-- Temperature rate constraint to cap large swing events before wider deployment
-- Passive thermal control: roller shutters (stays LP); opening windows makes $R_{ext}$ a decision variable → bilinear → SDP relaxations
-- **June 2024 isolated study:** optimizer cost 0.00€ vs. non-zero thermostat; clean illustration of the cooling-avoidance mechanism without the noise of a full two-year plot
+<!-- TODO: identify the specific day(s) of the 6°C peak-to-peak swing and characterize the conditions (price profile, weather, time of year). Consider a rate constraint on |dT_air/dt| since 0.7°C / 5 min ≈ 8°C/hr could feel uncomfortable to occupants. -->
 
 ---
 
-## 10. References
+## 7. Conclusion
+
+The path from "automate my heating" to a working system runs through four layers: a physical model of the building, a linear program that exploits it, an API pipeline that feeds it forecasts, and a Model Predictive Control loop that executes the output. Each layer is as simple as the next one allows. The model is linear, which is what makes the LP fast; the LP is fast, which is what makes the MPC loop tractable; and a tractable MPC loop is what turns a forecast into a plug command every five minutes.
+
+That same linearity is what makes the result interpretable. The schedule the optimizer produces can be read line by line: it pre-heats at 02:00 because electricity is cheapest then, and coasts through 09:00 because the heat stored in the wall is enough to stay comfortable. A black-box model gives you a number. This gives you a reason.
+
+---
+
+## 8. Future Work
+
+- Coordinating multiple devices or households, using the same LP structure with a larger state space
+- Handling price and weather uncertainty explicitly, instead of treating day-ahead forecasts as ground truth
+- V2G energy management <!-- TODO: link to the V2G case study once published -->
+- Identifying the apartment-specific RC parameters from real measurements rather than literature defaults
+- A rate constraint on $|dT_{air}/dt|$ to cap rare large swings; current per-step changes can reach ~0.7°C / 5 min, which is fast enough to feel
+- Roller shutters as a new control input: they modulate solar gain linearly, so the LP stays intact. Opening windows is more interesting: it makes $R_{ext}$ a decision variable, which introduces a bilinear term and breaks convexity — territory of SDP relaxations
+
+---
+
+## 9. References
 
 [^pean2018]: Péan, T., Salom, J., & Costa-Castelló, R. (2018). Configurations of model predictive control to exploit energy flexibility in building thermal loads. In *Proc. 57th IEEE Conference on Decision and Control (CDC)*, Miami, FL, USA, pp. 3177–3182. DOI: 10.1109/CDC.2018.8619095. [Local copy](papers/pean2018.pdf)
