@@ -4,7 +4,34 @@ import numpy as np
 import pandas as pd
 from scipy.signal import find_peaks
 
-from strom.optimization_utils import House
+from strom.optimization_utils import House, compare_output_costs
+
+
+def solve_or_load_case(
+    temp_price_df: pd.DataFrame,
+    house: House,
+    cache_dir: str | Path,
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    cache_dir = Path(cache_dir)
+    opt_path   = cache_dir / "optimal.csv"
+    base_path  = cache_dir / "baseline.csv"
+    therm_path = cache_dir / "thermostat.csv"
+
+    if opt_path.exists() and base_path.exists() and therm_path.exists():
+        print(f"Loading cached results from {cache_dir}")
+        return (
+            pd.read_csv(opt_path,   index_col="Timestamp", parse_dates=["Timestamp"]),
+            pd.read_csv(base_path,  index_col="Timestamp", parse_dates=["Timestamp"]),
+            pd.read_csv(therm_path, index_col="Timestamp", parse_dates=["Timestamp"]),
+        )
+
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    optimal_df, baseline_df, thermostat_df = compare_output_costs(temp_price_df, house)
+    optimal_df.to_csv(opt_path)
+    baseline_df.to_csv(base_path)
+    thermostat_df.to_csv(therm_path)
+    print(f"Saved results to {cache_dir}")
+    return optimal_df, baseline_df, thermostat_df
 
 
 def compute_and_save_results(

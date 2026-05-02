@@ -1,9 +1,9 @@
 import json
 
-from strom.optimization_utils import House, compare_output_costs
+from strom.optimization_utils import House
 from strom.plot_utils import plot_combined_cases
 from strom.data_utils import remove_temperature_spikes
-from case_study.results_utils import compute_and_save_results
+from case_study.results_utils import compute_and_save_results, solve_or_load_case
 
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -26,7 +26,7 @@ temp_price_df = temp_price_df[
     (temp_price_df.index.year == 2024) & (temp_price_df.index.month == 6)
 ]
 
-optimal_state_df, baseline_state_df, thermostat_state_df = compare_output_costs(temp_price_df, house)
+optimal_state_df, baseline_state_df, thermostat_state_df = solve_or_load_case(temp_price_df, house, "data/chunks_Jun24")
 
 fig = plot_combined_cases(optimal_state_df, baseline_state_df)
 fig.savefig("./plots/compare_costs_temps_Barcelona_Jun24.png")
