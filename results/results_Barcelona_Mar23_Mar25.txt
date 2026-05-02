@@ -3,27 +3,36 @@ Results: Barcelona — March 2023 to March 2025
 
 Cost Summary
 ───────────
-  Baseline total cost : 763.9453 €
-  Optimal  total cost : 409.4690 €
-  Absolute savings    : 354.4764 €
-  Relative savings    : 46.40%
+  LP-baseline total cost      : 549.7965 €
+  Thermostat  total cost      : 561.7115 €
+  Optimal     total cost      : 409.4690 €
+  Savings vs LP-baseline      : 140.3275 € (25.52%)
+  Savings vs thermostat       : 152.2425 € (27.10%)
 
 Energy Consumption
 ──────────────────
-  Optimal  heating : 6236.94 kWh
-  Optimal  cooling : 868.55 kWh
-  Optimal  total   : 7105.49 kWh
-  Baseline heating : 7297.36 kWh
-  Baseline cooling : 2325.02 kWh
-  Baseline total   : 9622.38 kWh
-  (Compare totals: equal => pure load shifting; optimal > baseline => savings from buying more at cheaper hours)
+  Optimal      heating : 6236.94 kWh
+  Optimal      cooling : 868.55 kWh
+  Optimal      total   : 7105.49 kWh
+  LP-baseline  heating : 5576.09 kWh
+  LP-baseline  cooling : 700.31 kWh
+  LP-baseline  total   : 6276.40 kWh
+  Thermostat   heating : 5698.50 kWh
+  Thermostat   cooling : 734.50 kWh
+  Thermostat   total   : 6433.00 kWh
 
 Temperature Constraints (Optimal)
 ─────────────────────────────────
-  Comfort band        : [18.0 °C, 24.0 °C]
-  T_min violations    : 0
-  T_max violations    : 0
-  Interior range      : [18.00 °C, 24.00 °C]
+  Comfort band     : [18.0 °C, 24.0 °C]
+  T_min violations : 0
+  T_max violations : 0
+  Interior range   : [18.00 °C, 24.00 °C]
+
+Temperature Constraints (Thermostat)
+─────────────────────────────────────
+  T_min violations : 32677
+  T_max violations : 3685
+  Interior range   : [17.36 °C, 24.12 °C]
 
 Temperature Volatility — Optimal (timestep = 0.08333 h)
 ─────────────────────────────────────────────────────────
@@ -40,41 +49,42 @@ Swing Amplitude — Optimal (peak prominence ≥ 0.5 °C)
   P95   amplitude : 1.90 °C
   Max   amplitude : 6.00 °C
 
-Monthly Cost Breakdown
-──────────────────────
-  Month      Baseline €  Optimal €  Saved €  Saved %
-  ──────────────────────────────────────────────────
-  2023-03          0.24       0.00     0.24   100.0%
-  2023-04         17.09       6.07    11.02    64.5%
-  2023-05         22.48       0.94    21.55    95.8%
-  2023-06         25.78       1.06    24.72    95.9%
-  2023-07         15.03      10.65     4.38    29.1%
-  2023-08         34.51      17.80    16.71    48.4%
-  2023-09         37.58       0.18    37.40    99.5%
-  2023-10         44.93       0.00    44.93   100.0%
-  2023-11         21.77      13.07     8.70    40.0%
-  2023-12         49.37      44.44     4.93    10.0%
-  2024-01         52.45      46.63     5.82    11.1%
-  2024-02         20.93      17.94     2.99    14.3%
-  2024-03          9.68       5.79     3.88    40.1%
-  2024-04          5.81       3.09     2.72    46.8%
-  2024-05          4.55       0.78     3.77    82.9%
-  2024-06         24.09       0.00    24.09   100.0%
-  2024-07         15.77       4.77    11.00    69.7%
-  2024-08         15.67       8.74     6.93    44.2%
-  2024-09         47.65       0.42    47.23    99.1%
-  2024-10         25.32       0.38    24.94    98.5%
-  2024-11         31.48      20.97    10.51    33.4%
-  2024-12         79.68      70.35     9.33    11.7%
-  2025-01         70.71      62.47     8.25    11.7%
-  2025-02         62.62      52.81     9.82    15.7%
-  2025-03         28.75      20.13     8.63    30.0%
+Monthly Cost Breakdown (Three-Way)
+──────────────────────────────────
+  Month       LP-Base €   Therm €  Optimal €  vs LP €  vs LP%  vs Th €  vs Th%
+  ────────────────────────────────────────────────────────────────────────────
+  2023-03          0.00      0.00       0.00     0.00   97.6%    -0.00   -inf%
+  2023-04         19.16     21.12       6.07    13.09   68.3%    15.05   71.3%
+  2023-05          2.71      3.32       0.94     1.78   65.5%     2.38   71.8%
+  2023-06          2.52      2.49       1.06     1.45   57.8%     1.43   57.4%
+  2023-07         16.43     16.31      10.65     5.78   35.2%     5.67   34.7%
+  2023-08         22.35     22.35      17.80     4.55   20.4%     4.55   20.4%
+  2023-09          0.83      0.81       0.18     0.65   78.6%     0.63   78.1%
+  2023-10          0.00      0.00       0.00     0.00   85.0%    -0.00   -inf%
+  2023-11         22.82     23.89      13.07     9.75   42.7%    10.82   45.3%
+  2023-12         51.34     52.04      44.44     6.90   13.4%     7.60   14.6%
+  2024-01         54.29     55.05      46.63     7.66   14.1%     8.42   15.3%
+  2024-02         22.12     23.04      17.94     4.18   18.9%     5.10   22.1%
+  2024-03         11.47     12.34       5.79     5.67   49.5%     6.55   53.0%
+  2024-04          6.64      7.19       3.09     3.55   53.4%     4.09   57.0%
+  2024-05          2.37      2.98       0.78     1.60   67.3%     2.20   73.9%
+  2024-06          0.00      0.00       0.00     0.00   79.9%    -0.00   -inf%
+  2024-07         11.02     10.64       4.77     6.25   56.7%     5.87   55.2%
+  2024-08         18.45     17.24       8.74     9.72   52.7%     8.50   49.3%
+  2024-09          0.72      0.53       0.42     0.30   41.3%     0.11   21.0%
+  2024-10          1.05      1.12       0.38     0.67   64.0%     0.74   66.2%
+  2024-11         29.89     31.76      20.97     8.91   29.8%    10.78   34.0%
+  2024-12         82.10     82.17      70.35    11.75   14.3%    11.81   14.4%
+  2025-01         73.42     74.37      62.47    10.95   14.9%    11.91   16.0%
+  2025-02         66.13     67.67      52.81    13.32   20.1%    14.87   22.0%
+  2025-03         31.98     33.28      20.13    11.85   37.1%    13.15   39.5%
 
 Heating vs Cooling Cost Split
 ─────────────────────────────
-  Optimal  heating cost : 365.86 €
-  Optimal  cooling cost : 43.61 €
-  Baseline heating cost : 573.34 €
-  Baseline cooling cost : 190.60 €
-  Heating savings       : 207.49 € (36.2%)
-  Cooling savings       : 146.99 € (77.1%)
+                            LP-base  Thermostat   Optimal
+  Heating cost (€)           477.48      491.33    365.86
+  Cooling cost (€)            72.31       70.38     43.61
+  Heating savings vs LP (%)          —           —     23.4%
+  Cooling savings vs LP (%)          —           —     39.7%
+  Heating savings vs Th (%)          —           —     25.5%
+  Cooling savings vs Th (%)          —           —     38.0%
