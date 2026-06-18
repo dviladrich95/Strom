@@ -41,3 +41,8 @@ results/*
 
 docs/_build/
 docs/papers/*.pdf
+
+# ── Observable Framework ──────────────────────────────────────────────────────
+docs/observable/.observablehq/
+docs/observable/dist/
+docs/observable/node_modules/

@@ -1,0 +1,248 @@
+/* Custom styles for the Strom case study */
+@import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400&display=swap');
+
+:root {
+  --primary-color: #f97316;   /* orange — heating */
+  --primary-light: #fb923c;
+  --primary-deep:  #ea580c;
+  --negative-color: #ef4444;
+  --neutral-color: #f8fafc;
+  --bg-card: rgba(15, 23, 42, 0.6);
+  --border-card: rgba(255, 255, 255, 0.08);
+}
+
+/* ─── Links ──────────────────────────────────────────────────────── */
+a, a:link, a:visited {
+  color: var(--primary-light) !important;
+  text-decoration: none !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  font-weight: 500;
+}
+a:hover {
+  color: #fdba74 !important;
+  text-shadow: 0 0 8px rgba(251, 146, 60, 0.4);
+  text-decoration: underline !important;
+}
+a:active { color: var(--primary-deep) !important; }
+
+h1 a, h2 a, h3 a, h4 a, h5 a, h6 a {
+  color: inherit !important;
+  text-decoration: none !important;
+  font-weight: inherit !important;
+}
+h1 a:hover, h2 a:hover, h3 a:hover, h4 a:hover {
+  color: var(--primary-light) !important;
+  text-decoration: none !important;
+}
+
+/* ─── Page background ────────────────────────────────────────────── */
+html, body {
+  background: radial-gradient(circle at 50% 0%, #0f172a 0%, #020617 100%) !important;
+  color: #f8fafc !important;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  margin: 0;
+  padding: 24px;
+  min-height: 100vh;
+}
+#observablehq-center, #observablehq-main, .observablehq {
+  background: transparent !important;
+  color: #f8fafc !important;
+}
+
+/* ─── Scrollbar ──────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.5); }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+/* ─── Prose ──────────────────────────────────────────────────────── */
+.observablehq p,
+.observablehq li,
+.observablehq blockquote {
+  font-family: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  font-size: 1.05rem;
+  line-height: 1.8;
+  color: #e2e8f0;
+}
+.observablehq p code,
+.observablehq li code {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.88rem;
+  background: rgba(255,255,255,0.07);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+/* ─── Headings ───────────────────────────────────────────────────── */
+h1 {
+  font-size: 2.3rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #ffffff 0%, #94a3b8 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  margin-bottom: 8px;
+  margin-top: 0;
+}
+h2 {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #ffffff !important;
+  border-bottom: 1px solid rgba(255,255,255,0.08) !important;
+  padding-bottom: 8px;
+  margin-top: 0;
+  margin-bottom: 16px;
+  letter-spacing: -0.02em;
+}
+
+/* ─── tl;dr box ──────────────────────────────────────────────────── */
+.tldr-box {
+  max-width: 720px;
+  margin: 0 auto 2rem auto;
+  text-align: center;
+}
+.tldr-label {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--primary-color);
+  border: 1px solid rgba(249,115,22,0.35);
+  border-radius: 20px;
+  padding: 3px 14px;
+  margin-bottom: 12px;
+}
+.tldr-text {
+  font-family: 'Source Serif 4', Georgia, serif !important;
+  font-size: 1.08rem !important;
+  line-height: 1.75 !important;
+  color: #cbd5e1 !important;
+  border-top: 1px solid rgba(255,255,255,0.07);
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  padding: 16px 0;
+  margin: 0 !important;
+}
+.tldr-text strong { color: #f1f5f9; font-weight: 600; }
+.tldr-text a { color: var(--primary-light) !important; font-weight: 500; }
+
+.tldr-findings {
+  font-family: 'Source Serif 4', Georgia, serif;
+  font-size: 0.98rem;
+  line-height: 1.65;
+  color: #cbd5e1;
+  text-align: left;
+  margin: 0 !important;
+  padding: 12px 0 14px 1.3rem;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+.tldr-findings li { margin-bottom: 8px; }
+.tldr-findings strong { color: #f1f5f9; font-weight: 600; }
+.tldr-findings em { color: #64748b; font-size: 0.85rem; }
+.tldr-findings a { color: var(--primary-light) !important; font-weight: 500; }
+
+/* ─── Glassmorphism card ─────────────────────────────────────────── */
+.premium-card {
+  background: var(--bg-card) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-card) !important;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.5) !important;
+  transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+}
+.premium-card:hover {
+  border-color: rgba(249,115,22,0.2) !important;
+  box-shadow: 0 10px 40px rgba(249,115,22,0.04) !important;
+}
+
+/* ─── KPI metrics row ────────────────────────────────────────────── */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin: 24px 0;
+}
+.metric-card {
+  text-align: center;
+  background: rgba(8,13,28,0.5) !important;
+  border: 1px solid rgba(255,255,255,0.05) !important;
+  border-radius: 12px;
+  padding: 18px;
+  transition: all 0.2s ease;
+}
+.metric-card:hover {
+  border-color: rgba(249,115,22,0.2) !important;
+  background: rgba(8,13,28,0.7) !important;
+}
+.metric-title {
+  font-size: 0.78rem;
+  color: #94a3b8 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+}
+.metric-value {
+  font-size: 1.9rem;
+  font-weight: 800;
+}
+.metric-value.positive { color: var(--primary-light) !important; text-shadow: 0 0 10px rgba(251,146,60,0.25); }
+.metric-value.negative { color: #f87171 !important; }
+.metric-value.neutral  { color: #f1f5f9 !important; }
+
+/* ─── Tables ─────────────────────────────────────────────────────── */
+.observablehq table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 24px 0;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.15) !important;
+  background: rgba(15,23,42,0.45);
+}
+.observablehq th {
+  background: rgba(249,115,22,0.08) !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  font-size: 0.92rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 14px 18px !important;
+  border: 1px solid rgba(255,255,255,0.15) !important;
+  text-align: left;
+}
+.observablehq td {
+  padding: 14px 18px !important;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  border: 1px solid rgba(255,255,255,0.1) !important;
+  color: #cbd5e1 !important;
+  vertical-align: middle;
+}
+.observablehq tr:nth-child(even) td { background: rgba(255,255,255,0.015); }
+.observablehq tr:hover td {
+  background: rgba(249,115,22,0.04) !important;
+  color: #ffffff !important;
+}
+
+/* ─── Plot images ────────────────────────────────────────────────── */
+.plot-figure {
+  margin: 24px 0;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.plot-figure img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.plot-caption {
+  font-size: 0.85rem;
+  color: #64748b;
+  text-align: center;
+  padding: 10px 16px;
+  background: rgba(8,13,28,0.4);
+  font-style: italic;
+}
