@@ -73,4 +73,5 @@ async def main(email, password, device_ip, house):
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    email, password, device_ip, house = setup_env_config()
+    asyncio.run(main(email, password, device_ip, house))
