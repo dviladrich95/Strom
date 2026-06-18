@@ -200,12 +200,12 @@ The result: **48% cost savings** over the week, while the optimizer actually bou
 
 During the pre-charge on 24–25 Nov, the air temperature ran about 1°C above the wall, exactly what the model predicts ($\Delta T \approx 0.84\ ^\circ\text{C}$, §3.3). The theory checks out in the data.
 
-### November 2024
+### November 2024 (second half)
 
 ![Monthly comparison, November 2024](_static/images/compare_costs_temps_Barcelona_Nov.png)
-*Optimal vs. thermostat, November 2024.*
+*Optimal vs. thermostat, 15–30 November 2024.*
 
-The week wasn't cherry-picked. The same pattern repeats across the full month wherever the price schedule offers a cheap window: **29% savings**, again buying more total energy (187 kWh vs 165 kWh). November is heating-dominated, so the optimizer hugs the lower edge of the comfort band most of the time — only pushing higher when pre-charging before a price spike. In summer the pattern reverses: with cooling as the dominant cost, the optimizer hugs the upper edge and pre-cools toward the lower bound when night prices drop.
+The week wasn't cherry-picked. The same pattern repeats wherever the price schedule offers a cheap window: **36% savings** over the fortnight, again buying more total energy (187 kWh vs 168 kWh). November is heating-dominated, so the optimizer hugs the lower edge of the comfort band most of the time — only pushing higher when pre-charging before a price spike. In summer the pattern reverses: with cooling as the dominant cost, the optimizer hugs the upper edge and pre-cools toward the lower bound when night prices drop.
 
 ### Two-Year Backtest: March 2023 to March 2025
 
@@ -259,4 +259,4 @@ That same linearity is what makes the result interpretable. The schedule the opt
 
 ## 9. References
 
-[^pean2018]: Péan, T., Salom, J., & Costa-Castelló, R. (2018). Configurations of model predictive control to exploit energy flexibility in building thermal loads. In *Proc. 57th IEEE Conference on Decision and Control (CDC)*, Miami, FL, USA, pp. 3177–3182. DOI: 10.1109/CDC.2018.8619095. [Local copy](papers/pean2018.pdf)
+[^pean2018]: Péan, T., Salom, J., & Costa-Castelló, R. (2018). Configurations of model predictive control to exploit energy flexibility in building thermal loads. In *Proc. 57th IEEE Conference on Decision and Control (CDC)*, Miami, FL, USA, pp. 3177–3182. DOI: 10.1109/CDC.2018.8619095.

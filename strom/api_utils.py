@@ -11,20 +11,15 @@ from bs4 import XMLParsedAsHTMLWarning
 
 warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 
-EXAMPLE_CITIES = [
-    "Barcelona, ES", "Madrid, ES", "Berlin, DE", 
-    "Paris, FR", "London, GB", "Rome, IT"
-]
-
 def find_root_dir(target_folder: str = "Strom") -> str:
     current_dir = os.getcwd()
-    parent_dir = current_dir
-
-    while parent_dir == current_dir or current_dir != '/':
+    while True:
         if target_folder in os.listdir(current_dir):
             return os.path.abspath(os.path.join(current_dir, target_folder))
-        current_dir = os.path.dirname(current_dir)
-    
+        parent = os.path.dirname(current_dir)
+        if parent == current_dir:
+            break
+        current_dir = parent
     raise FileNotFoundError(f"'{target_folder}' folder not found in directory tree")
 
 def read_api_key(key_path: str) -> str:
@@ -43,7 +38,7 @@ def get_weather_api_key() -> str:
     return read_api_key('./config/weather_api_key.txt')
 
 def get_weather_data(city: str = "Barcelona, ES") -> pd.Series:
-    """Get weather for specified city. Examples: Barcelona, ES | Madrid, ES | Berlin, DE"""
+    """Get weather forecast for a Spanish city (timestamps localised to Europe/Madrid)."""
     api_key = get_weather_api_key()
     
     try:
@@ -53,10 +48,7 @@ def get_weather_data(city: str = "Barcelona, ES") -> pd.Series:
         )
         response.raise_for_status()
     except requests.RequestException as e:
-        available_cities = "\n".join(f"- {city}" for city in EXAMPLE_CITIES)
-        raise ValueError(
-            f"Failed to fetch weather data for '{city}'. Examples:\n{available_cities}"
-        ) from e
+        raise ValueError(f"Failed to fetch weather data for '{city}'.") from e
     
     data = response.json()
     weather_data = [(pd.Timestamp(entry['dt'], unit='s', tz='UTC').tz_convert('Europe/Madrid'),
