@@ -25,27 +25,27 @@ title: Strom — Smart Heating Optimisation
 
 ## 0. The Story
 
-[Jan Balanya](https://janbalanya.com/) is on a dynamic electricity tariff: prices change every hour, cheapest at night, expensive in the morning. He had a plug-in electric heater at home, and wanted to take advantage of the price swings automatically, without checking an app.
+My friend [Jan](https://janbalanya.com/) has a problem most people never notice they could have. He's on a dynamic electricity tariff, which means the price of power changes every hour — dirt cheap at 3 a.m., painfully expensive through the morning rush. He also owns an ordinary plug-in heater, and a reasonable wish: heat the flat when electricity is cheap, not just when he happens to feel cold, and do it without checking an app every hour. That modest wish is the seed of this whole project — and it turns out to lean on more physics than you'd expect.
 
-The result is a full-stack project: it pulls price and weather forecasts from APIs, builds a physical model of the building's thermal behaviour, solves an optimization problem to find the cheapest heating schedule, and sends commands to a smart plug via a custom interface built to control the plug-in heater remotely.
+The result is a full-stack system with four parts: it pulls price and weather forecasts from APIs, models the building's thermal behaviour, solves for the cheapest schedule that stays comfortable, and sends the on/off commands to a smart plug. Forecast in, plug command out.
 
 ---
 
 ## 1. The Business Perspective
 
-Renewable energy is cheap but volatile, depending on weather conditions. Solar overproduction drives prices to near zero some afternoons, then demand peaks push them back up. People on dynamic tariffs see this directly in their bills.
+The price swings are not noise; they have a cause. Renewable generation is cheap but weather-bound: solar overproduction drives the wholesale price toward zero on sunny afternoons, and demand peaks push it back up. A flat tariff hides this from most consumers. A dynamic tariff passes it straight through — which is exactly what makes those swings something you can act on.
 
-The opportunity is load shifting: buy energy when it's cheap, not when you need it. Heating is a good target because thermal mass gives you slack: a few degrees and a few hours of flexibility before comfort suffers. The optimizer exploits that slack systematically.
+The opening this creates is load shifting: buy energy when it's cheap, not at the moment you happen to need it. Heating is an unusually good candidate, because a building comes with slack built in — a few degrees of comfort and a few hours of thermal inertia stand between "heat now" and "too cold." That slack is the room to maneuver. The whole job of the optimizer is to use it deliberately instead of letting it go to waste.
 
-The objective is simple: minimize the electricity bill while keeping the temperature inside a defined comfort band at all times. With a linear model of the building, this becomes a linear programme that can be solved efficiently and reliably, guaranteed to be globally optimal and interpretable.
+Stated plainly, the objective is almost boring: spend as little as possible on electricity while keeping the indoor temperature inside a comfort band at all times. The reason it stays tractable is that, with a linear model of the building, this is a linear programme — so we get the global optimum exactly, quickly, and in a form we can actually read and explain. The "at all times" is doing quiet but heavy lifting here.
 
 ---
 
 ## 2. How the Building Works as a Battery
 
-Electricity is perishable: the grid has to match supply and demand in real time. The house's thermal mass lets us store that cheap electricity by heating it up, then give off that heat over the next hours, spreading out its use.
+Electricity is perishable in a way most goods are not: the grid has to match supply and demand at every instant, with almost no buffer in between. That is the real reason cheap power at 3 a.m. is so hard to use at 9 a.m. — you cannot just set it aside. But a house can. Heat its thermal mass while power is cheap and it releases that warmth over the following hours; the structure itself becomes the battery, storing energy as temperature instead of charge.
 
-The physics of each part follows Newton's law of cooling:
+Each part of the building obeys the same physics — Newton's law of cooling:
 
 $$C \frac{dT_{\text{interior}}}{dt} = \frac{T_{\text{exterior}} - T_{\text{interior}}}{R} + Q$$
 
@@ -57,17 +57,17 @@ $$C \frac{dT_{\text{interior}}}{dt} = \frac{T_{\text{exterior}} - T_{\text{inter
 | $\tau = R \cdot C$ | Timescale: time to halve a temperature gap | h |
 | $Q$ | Net thermal power injected into the interior | kW |
 
-The injected power $Q$ is the *net* thermal flow: positive when heating, negative when cooling. In practice it is the difference of two non-negative duty cycles,
+The injected power $Q$ is the *net* thermal flow — positive when heating, negative when cooling. In practice we never command a signed power directly; we split it into the difference of two non-negative duty cycles,
 
 $$Q = Q_h\,\alpha_h(t) - Q_c\,\alpha_c(t),$$
 
-where $Q_h, Q_c$ are the heater and cooler nominal powers and $\alpha_h, \alpha_c \in [0,1]$ are their PWM duty cycles. Splitting heating and cooling into two independent variables keeps the optimization convex; a single signed $Q$ would force the optimizer to choose its sign, breaking linearity.
+where $Q_h, Q_c$ are the heater and cooler nominal powers and $\alpha_h, \alpha_c \in [0,1]$ are their PWM duty cycles. The split is not cosmetic: keeping heating and cooling as two independent non-negative variables is what keeps the problem linear. A single signed $Q$ would force the optimizer to decide its own sign — exactly the kind of either/or a linear programme cannot express.
 
-But homes are not a single lump of mass. They are shells that separate a thin envelope of air — which we want to hold inside a comfortable temperature range — from the exterior. The radiator heats the air, the air heats the walls, and heat eventually leaks outside.
+So far we have treated the house as a single lump of mass, but that hides the mechanism that makes the whole scheme work. A home is really a shell: a thin envelope of air — the part we actually want to keep comfortable — wrapped inside far heavier walls. The heater warms the air, the air warms the walls, and only then does heat slowly leak outside.
 
-So the model has two meaningful lumps. The air heats up and cools down in minutes; the wall's thermal mass takes days to fully charge or discharge. A thermal resistance between them measures how hard it is for heat to pass; another resistance to the outside reflects the insulation quality.
+That leaves us two lumps worth tracking, and they live on completely different clocks. The air heats and cools in minutes; the walls take days to fully charge or discharge. Between them sits a thermal resistance measuring how readily heat crosses from one to the other, and a second resistance to the outside that is really just a number for how well the flat is insulated.
 
-Pre-heating the wall is what actually extends the coasting time inside the comfort zone — it is the slow, large reservoir that keeps the house warm after the heater turns off.
+And it is the wall, not the air, that does the heavy lifting. Pre-heating that slow, massive reservoir is what buys the long coasting time inside the comfort zone — the stretch when the heater is off and the room stays warm anyway. That single fact is what the rest of this project is built to exploit.
 
 ---
 
@@ -75,20 +75,20 @@ Pre-heating the wall is what actually extends the coasting time inside the comfo
 
 ### 3.0 Which Model to Use?
 
-The two natural lumped-parameter options:
+Once we commit to lumped masses, two natural options present themselves:
 
 | Model | What it captures | The trade-off |
 |---|---|---|
 | **1R1C** | Single air+wall lump | Simple and useful for grid-scale aggregation, but misses the air/wall split — it cannot tell how warm people actually feel inside |
 | **2R2C** | Air + wall | Two time constants, still linear; captures the heat-battery effect that drives both comfort and cost |
 
-> *Beyond lumped models lie full spatial simulations (FEM-based tools like EnergyPlus) that resolve geometry and localized heat leaks. They are accurate but expensive — useful for design and certification, not for real-time control.*
+> *Beyond lumped models lie full spatial simulations — FEM tools like EnergyPlus that resolve geometry and every localized heat leak. They are more accurate and far more expensive, which makes them the right tool for design and certification and the wrong one for a controller that has to re-solve every few minutes.*
 
-2R2C is the minimal model that captures comfort, since it separates the fast-responding air from the slow thermal reservoir. It is also linear, which means the cost-minimization problem in §4 can be solved exactly using a standard linear programme, with hard comfort constraints rather than soft penalties.
+2R2C is the smallest model that still tells us what we need: by separating the fast-responding air from the slow thermal reservoir, it captures the one effect that comfort and cost both hinge on. It is also linear — the property that lets the cost-minimization in §4 be solved exactly, with the comfort band entered as a hard constraint rather than a soft penalty we merely hope the optimizer respects.
 
 ### 3.1 Two Equations
 
-Map the building to a circuit: thermal masses are capacitors, insulation layers are resistors, the heater and cooler are current sources. Newton's law at each node gives one differential equation per part.
+The cleanest way to see the model is as a circuit: thermal masses become capacitors, insulation layers become resistors, and the heater and cooler are current sources injecting energy. Newton's law at each node then hands us one differential equation per part — no modeling left to taste.
 
 For the air:
 $$C_{air} \frac{dT_{air}}{dt} = \frac{T_{wall} - T_{air}}{R_{int}} + Q_h\,\alpha_h(t) - Q_c\,\alpha_c(t)$$
@@ -96,11 +96,11 @@ $$C_{air} \frac{dT_{air}}{dt} = \frac{T_{wall} - T_{air}}{R_{int}} + Q_h\,\alpha
 For the wall:
 $$C_{wall} \frac{dT_{wall}}{dt} = \frac{T_{air} - T_{wall}}{R_{int}} + \frac{T_{ext} - T_{wall}}{R_{ext}}$$
 
-The air node receives the net injection from heater and cooler — both with non-negative duty cycles $\alpha_h, \alpha_c \in [0,1]$ — and exchanges with the wall. The wall exchanges with the air and slowly leaks to the outside.
+Read them as a pair of flows: the air node takes the net injection from heater and cooler — both with non-negative duty cycles $\alpha_h, \alpha_c \in [0,1]$ — and trades heat with the wall. The wall, in turn, trades with the air and leaks slowly to the outside. Nothing else couples to anything, which is exactly why the system stays this small.
 
 ### 3.2 Matrix Form
 
-Written together:
+Stacked into a single system:
 
 $$\frac{d\mathbf{T}(t)}{dt} = A\,\mathbf{T}(t) + B\,\mathbf{u}(t) + \mathbf{d}(t)$$
 
@@ -118,11 +118,11 @@ With the actual parameter values:
 
 $$A \approx \begin{pmatrix} -9.16 & 9.16 \\[4pt] 0.125 & -0.131 \end{pmatrix}\ \text{hr}^{-1}$$
 
-The diagonal entries differ by a factor of 70. That's the model's way of saying what we already knew: air responds 70 times faster than the wall.
+The two diagonal entries differ by a factor of about 70. That is the matrix restating, in its own language, something we already suspected from standing in a cold room: the air responds roughly 70 times faster than the wall behind it.
 
 ### 3.3 Parameters and Timescales
 
-Parameters are taken from Péan et al. (2018)[^pean2018], identified for a multi-family apartment in Barcelona.
+The parameters are not invented; they come from Péan et al. (2018)[^pean2018], identified for a multi-family apartment in Barcelona — close enough to Jan's flat to be a fair stand-in.
 
 | Parameter | Value | Units | What it measures |
 |---|---|---|---|
@@ -138,26 +138,26 @@ The two timescales:
 - $\tau_{air} = R_{int} \cdot C_{air} \approx 6.5\ \text{min}$: air responds in minutes
 - $\tau_{wall} = R_{ext} \cdot C_{wall} \approx 7\ \text{days}$: wall holds heat for nearly a week
 
-At full heater power and no cooling, the air runs about 0.84°C warmer than the wall in steady state — a small but measurable gap that shows up in the plots:
+At full heater power and no cooling, the air settles about 0.84°C warmer than the wall in steady state — a small gap, but a real one you can actually spot in the plots further down:
 $$\Delta T \approx R_{int} \cdot Q_h = 0.42 \times 2.0 = 0.84\ ^\circ\text{C}$$
 
 ---
 
 ## 4. The Optimisation
 
-The task: pick heater and cooler duty cycles $\alpha_h(t), \alpha_c(t) \in [0,1]$ over the next 24 hours so that the indoor temperature stays inside the comfort band and the total electricity cost is minimized. Because only the *next step* is ever applied — the LP re-solves every interval with a fresh forecast — this is a **Model Predictive Control** (MPC) loop.
+Now the actual task: choose heater and cooler duty cycles $\alpha_h(t), \alpha_c(t) \in [0,1]$ over the next 24 hours so the indoor temperature never leaves the comfort band and the total electricity cost is as low as possible. One twist makes it realistic — we only ever apply the *next* step, then re-solve from scratch with an updated forecast. That re-solving loop is **Model Predictive Control** (MPC), and it is what lets a plan made at noon quietly correct itself by 12:05.
 
-**Why not a thermostat:** it heats when cold and stops when warm. No awareness of what electricity costs at 03:00 vs. 09:00, so it cannot pre-heat. All the savings in this project come from that look-ahead.
+**Why not just a thermostat?** It heats when the room is cold and stops when it's warm — and it has no idea whether electricity costs 5 cents or 50 at that moment. Blind to the price ahead, it can't pre-heat, and pre-heating is where every euro of savings in this project comes from.
 
-**Why not reinforcement learning:** RL can learn complex policies, but it cannot give hard guarantees. A temperature constraint entered as a soft penalty is just that — soft. One cold night is enough to lose a user's trust in an automated system.
+**Why not reinforcement learning?** RL can learn genuinely sophisticated policies, but it can't promise you anything. A temperature limit handed to it as a soft penalty stays soft — and one cold night is all it takes for someone to rip an automated system off the wall.
 
-**Why a linear programme:** the physical model is linear, the cost function (power × price) is linear, and the constraints (comfort band, duty-cycle bounds) are linear. A linear programme finds the global optimum exactly, with the comfort band as a hard constraint, not a suggestion.
+**Why a linear programme, then?** Because everything here is already linear: the building dynamics, the cost (power × price), and the constraints (comfort band, duty-cycle bounds). That lets an LP find the exact global optimum — with the comfort band as a hard wall, not a polite suggestion.
 
-To embed the continuous dynamics in the LP, each ODE step becomes a linear equality constraint using forward Euler with $\Delta t = 5\ \text{min}$:
+To get these continuous dynamics inside the LP, we discretize: each ODE step becomes a linear equality constraint via forward Euler with $\Delta t = 5\ \text{min}$:
 
 $$\mathbf{T}(t+1) = \mathbf{T}(t) + \Delta t \left( A\,\mathbf{T}(t) + B\,\mathbf{u}(t) + \mathbf{d}(t) \right)$$
 
-That step size is set by stability: forward Euler is only stable when $\Delta t < 2/|\lambda_{\text{fast}}| \approx 13\ \text{min}$ for the air's fast eigenmode. A 24-hour horizon at 5 min gives 288 timesteps — roughly 1,150 decision variables, solved by CLARABEL in milliseconds.
+The step size is not arbitrary; it is set by stability. Forward Euler stays stable only when $\Delta t < 2/|\lambda_{\text{fast}}| \approx 13\ \text{min}$, the limit imposed by the air's fast eigenmode — so 5 minutes leaves a comfortable margin. A 24-hour horizon at that resolution is 288 timesteps, roughly 1,150 decision variables, which CLARABEL dispatches in milliseconds.
 
 ---
 
@@ -176,7 +176,7 @@ That step size is set by stability: forward Euler is only stable when $\Delta t 
 
 ## 6. Results
 
-The comparison throughout is a **deadband thermostat**: heat when the temperature drops below $T_{min}$, cool when it rises above $T_{max}$, off otherwise. No price awareness, no forecasting. That's what a household without this system would run.
+Throughout, the thing we measure against is a **deadband thermostat**: heat below $T_{min}$, cool above $T_{max}$, do nothing in between. No prices, no forecast, no look-ahead — exactly what a household without this system already has on the wall.
 
 ### 25 November 2024 — single day
 
@@ -185,7 +185,7 @@ The comparison throughout is a **deadband thermostat**: heat when the temperatur
   <div class="plot-caption">Optimal vs. thermostat, 25 November 2024.</div>
 </div>
 
-A representative winter day: the optimiser front-loads heating into the cheapest morning hours, avoiding the expensive early-evening peak while keeping the flat within the comfort band throughout.
+A representative winter day. The optimiser front-loads its heating into the cheapest pre-dawn hours and then coasts, sidestepping the expensive early-evening peak entirely — and the flat never once leaves the comfort band while it does.
 
 ### November 2024 (second half)
 
@@ -194,7 +194,7 @@ A representative winter day: the optimiser front-loads heating into the cheapest
   <div class="plot-caption">Optimal vs. thermostat, 15–30 November 2024.</div>
 </div>
 
-The day wasn't cherry-picked. The same pattern repeats wherever the price schedule offers a cheap window: **36% savings** over the fortnight, again buying more total energy (187 kWh vs 168 kWh). November is heating-dominated, so the optimizer hugs the lower edge of the comfort band most of the time — only pushing higher when pre-charging before a price spike. In summer the pattern reverses: with cooling as the dominant cost, the optimizer hugs the upper edge and pre-cools toward the lower bound when night prices drop.
+That day wasn't cherry-picked. The same shape recurs wherever the price schedule opens a cheap window: **36% savings** over the fortnight, again while buying *more* total energy (187 kWh vs 168 kWh). November is heating-dominated, so the optimizer spends most of its time hugging the lower edge of the comfort band, climbing above it only to pre-charge ahead of a price spike. In summer the picture flips entirely — cooling becomes the dominant cost, the optimizer hugs the *upper* edge, and it pre-cools toward the lower bound when overnight prices fall.
 
 ### Two-year backtest: March 2023 to March 2025
 
@@ -203,7 +203,7 @@ The day wasn't cherry-picked. The same pattern repeats wherever the price schedu
   <div class="plot-caption">Optimal vs. thermostat, March 2023 – March 2025.</div>
 </div>
 
-Running the full two years as a single LP isn't feasible: at 5-minute steps that's 210,000 timesteps. Instead, each calendar month is solved independently, with the final temperatures of month $N$ passed as initial conditions to month $N+1$. Each month is saved to disk so the computation can resume if anything fails.
+Running the full two years as one LP isn't practical — at 5-minute steps that's 210,000 timesteps in a single solve. So we cut it at the seams: each calendar month is solved on its own, with the final temperatures of month $N$ handed to month $N+1$ as initial conditions, and every month written to disk so a crash never costs more than one month of compute.
 
 <div class="metrics-grid">
   <div class="metric-card">
@@ -224,25 +224,25 @@ Running the full two years as a single LP isn't feasible: at 5-minute steps that
   </div>
 </div>
 
-The optimizer spends less while using more energy. Savings come entirely from timing.
+The optimizer spends less while using more energy. Every euro saved comes from *when* it buys, not how much.
 
-The blended 27% number masks three regimes:
+That blended 27% hides three quite different regimes:
 
-- **Free-coast months** (March 2023, October 2023, June 2024): the exterior temperature stays inside the comfort band, so no actuation is required. These confirm the optimizer correctly does nothing when nothing is needed — sanity checks, not wins.
-- **Shoulder seasons** (April, May, July, August, late autumn, March 2025): wide price swings combined with ample comfort-band slack let the optimizer save **35–98%** on bills of 5–35 €.
-- **Deep winter** (December, January, February): the heater runs nearly full-time just to compensate heat loss, leaving little slack for cheap-hour shifting. Savings here drop to **14–22%**, but these months also dominate the absolute bill.
+- **Free-coast months** (March 2023, October 2023, June 2024): the exterior temperature stays inside the comfort band, so no heating or cooling is called for at all. These aren't wins so much as sanity checks — they confirm the optimizer does nothing when nothing needs doing.
+- **Shoulder seasons** (April, May, July, August, late autumn, March 2025): wide price swings plus ample comfort-band slack are the ideal conditions, and the optimizer banks **35–98%** on bills of 5–35 €.
+- **Deep winter** (December, January, February): the heater runs nearly flat-out just to keep pace with heat loss, leaving almost no slack to shift around. Savings fall to **14–22%** — but these are also the months that dominate the absolute bill, so in euros they matter most.
 
-There is a side effect worth naming. Buying when prices are at or near zero means buying surplus — the periods of solar overproduction or low overnight demand that the grid would otherwise have to spill or curtail. At household scale this is a footnote; at fleet scale, optimizers like this one act as distributed flexibility, absorbing renewable overproduction the grid cannot use directly.
+There's a side effect worth naming, because it points beyond this one flat. Buying when the price is near zero means buying *surplus* — the solar overproduction and low-demand overnight hours the grid would otherwise have to spill or curtail. For a single household that's a footnote. Multiply it across a fleet and optimizers like this one begin to act as distributed flexibility, soaking up exactly the renewable energy the grid can't otherwise place.
 
-**Temperature smoothness.** Per-step changes stay below 0.7°C / 5 min. Peak-to-peak swing amplitudes within the comfort band average ~1°C, with a 95th percentile of ~2°C; the maximum observed amplitude reaches the full 6°C band on a handful of days when the optimizer fully exploits both bounds.
+**One last detail — comfort is more than just "inside the band."** Per-step temperature changes stay below 0.7°C / 5 min, so nothing ever lurches. Peak-to-peak swings within the band average about 1°C, with a 95th percentile near 2°C; only on a handful of days does the optimizer use the full 6°C — and only when prices make it genuinely worth it.
 
 ---
 
 ## 7. Conclusion
 
-The path from "automate my heating" to a working system runs through four layers: a physical model of the building, a linear programme that exploits it, an API pipeline that feeds it forecasts, and a Model Predictive Control loop that executes the output. Each layer is as simple as the next one allows. The model is linear, which is what makes the LP fast; the LP is fast, which is what makes the MPC loop tractable; and a tractable MPC loop is what turns a forecast into a plug command every five minutes.
+The path from "automate my heating" to a working system runs through four layers: a physical model of the building, a linear programme that exploits it, an API pipeline that feeds it forecasts, and an MPC loop that turns its output into action. The layers are stacked on purpose. The model is linear, which is what keeps the LP fast; the LP is fast, which is what keeps the MPC loop tractable; and a tractable MPC loop is what turns a weather forecast into a plug command every five minutes.
 
-That same linearity is what makes the result interpretable. The schedule the optimizer produces can be read line by line: it pre-heats at 02:00 because electricity is cheapest then, and coasts through 09:00 because the heat stored in the wall is enough to stay comfortable. A black-box model gives you a number. This gives you a reason.
+And that same linearity buys something a bigger model would not: you can read the answer. The schedule comes out line by line, every move with a reason attached — it pre-heats at 02:00 because that's when power is cheapest, and coasts through the 09:00 peak because the heat banked in the wall is enough to stay comfortable. A black-box controller gives you a number. This gives you a reason.
 
 ---
 
