@@ -16,6 +16,7 @@ with open("config/house_config.json") as f:
     house_cfg = json.load(f)
 
 temp_price_df = pd.read_csv(INPUT_CSV, index_col="Timestamp", parse_dates=["Timestamp"])
+temp_price_df = temp_price_df.rename(columns={"Exterior Temperature": "ExteriorTemperature"})
 assert isinstance(temp_price_df.index, pd.DatetimeIndex)
 months = sorted({(d.year, d.month) for d in temp_price_df.index})
 CHUNK_DIR.mkdir(parents=True, exist_ok=True)
@@ -77,8 +78,9 @@ thermostat_state_df = pd.concat(therm_chunks)
 
 house = House(**house_cfg, freq="1h")
 
-fig = plot_combined_cases_years(optimal_state_df, baseline_state_df)
-fig.savefig("./plots/compare_costs_temps_Barcelona_Mar23_Mar25.png")
+fig = plot_combined_cases_years(optimal_state_df, thermostat_state_df, compare_label="Thermostat")
+fig.savefig("./plots/compare_costs_temps_Barcelona_Mar23_Mar25.png", dpi=150, bbox_inches="tight")
+fig.savefig("docs/observable/src/images/compare_costs_temps_Barcelona_Mar23_Mar25.png", dpi=150, bbox_inches="tight")
 
 compute_and_save_results(
     optimal_state_df,

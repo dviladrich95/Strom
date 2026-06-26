@@ -3,23 +3,23 @@ Results: Barcelona — March 2023 to March 2025
 
 Cost Summary
 ───────────
-  LP-baseline total cost      : 549.7965 €
-  Thermostat  total cost      : 561.7115 €
-  Optimal     total cost      : 409.4690 €
-  Savings vs LP-baseline      : 140.3275 € (25.52%)
-  Savings vs thermostat       : 152.2425 € (27.10%)
+  LP-baseline total cost      : 545.8062 €
+  Thermostat  total cost      : 557.9807 €
+  Optimal     total cost      : 405.9924 €
+  Savings vs LP-baseline      : 139.8138 € (25.62%)
+  Savings vs thermostat       : 151.9883 € (27.24%)
 
 Energy Consumption
 ──────────────────
-  Optimal      heating : 6236.94 kWh
-  Optimal      cooling : 868.55 kWh
-  Optimal      total   : 7105.49 kWh
-  LP-baseline  heating : 5576.09 kWh
-  LP-baseline  cooling : 700.31 kWh
-  LP-baseline  total   : 6276.40 kWh
-  Thermostat   heating : 5698.50 kWh
-  Thermostat   cooling : 734.50 kWh
-  Thermostat   total   : 6433.00 kWh
+  Optimal      heating : 6206.32 kWh
+  Optimal      cooling : 862.72 kWh
+  Optimal      total   : 7069.04 kWh
+  LP-baseline  heating : 5544.50 kWh
+  LP-baseline  cooling : 693.52 kWh
+  LP-baseline  total   : 6238.02 kWh
+  Thermostat   heating : 5668.83 kWh
+  Thermostat   cooling : 727.83 kWh
+  Thermostat   total   : 6396.67 kWh
 
 Temperature Constraints (Optimal)
 ─────────────────────────────────
@@ -30,8 +30,8 @@ Temperature Constraints (Optimal)
 
 Temperature Constraints (Thermostat)
 ─────────────────────────────────────
-  T_min violations : 32677
-  T_max violations : 3685
+  T_min violations : 32352
+  T_max violations : 3668
   Interior range   : [17.36 °C, 24.12 °C]
 
 Temperature Volatility — Optimal (timestep = 0.08333 h)
@@ -39,13 +39,13 @@ Temperature Volatility — Optimal (timestep = 0.08333 h)
   Mean  |ΔT| : 0.007 °C
   Std   |ΔT| : 0.046 °C
   P95   |ΔT| : 0.008 °C
-  Max   |ΔT| : 0.643 °C
+  Max   |ΔT| : 0.642 °C
 
 Swing Amplitude — Optimal (peak prominence ≥ 0.5 °C)
 ─────────────────────────────────────────────────────────
-  Heating events  : 620
-  Cooling events  : 619
-  Mean  amplitude : 1.09 °C
+  Heating events  : 617
+  Cooling events  : 617
+  Mean  amplitude : 1.10 °C
   P95   amplitude : 1.90 °C
   Max   amplitude : 6.00 °C
 
@@ -54,37 +54,37 @@ Monthly Cost Breakdown (Three-Way)
   Month       LP-Base €   Therm €  Optimal €  vs LP €  vs LP%  vs Th €  vs Th%
   ────────────────────────────────────────────────────────────────────────────
   2023-03          0.00      0.00       0.00     0.00   97.6%    -0.00   -inf%
-  2023-04         19.16     21.12       6.07    13.09   68.3%    15.05   71.3%
-  2023-05          2.71      3.32       0.94     1.78   65.5%     2.38   71.8%
-  2023-06          2.52      2.49       1.06     1.45   57.8%     1.43   57.4%
-  2023-07         16.43     16.31      10.65     5.78   35.2%     5.67   34.7%
-  2023-08         22.35     22.35      17.80     4.55   20.4%     4.55   20.4%
-  2023-09          0.83      0.81       0.18     0.65   78.6%     0.63   78.1%
-  2023-10          0.00      0.00       0.00     0.00   85.0%    -0.00   -inf%
-  2023-11         22.82     23.89      13.07     9.75   42.7%    10.82   45.3%
-  2023-12         51.34     52.04      44.44     6.90   13.4%     7.60   14.6%
-  2024-01         54.29     55.05      46.63     7.66   14.1%     8.42   15.3%
-  2024-02         22.12     23.04      17.94     4.18   18.9%     5.10   22.1%
-  2024-03         11.47     12.34       5.79     5.67   49.5%     6.55   53.0%
-  2024-04          6.64      7.19       3.09     3.55   53.4%     4.09   57.0%
-  2024-05          2.37      2.98       0.78     1.60   67.3%     2.20   73.9%
+  2023-04         19.17     21.19       6.07    13.10   68.4%    15.12   71.4%
+  2023-05          2.82      3.43       0.99     1.83   65.0%     2.44   71.2%
+  2023-06          2.59      2.55       1.13     1.47   56.5%     1.42   55.7%
+  2023-07         16.32     16.15      10.58     5.74   35.1%     5.57   34.5%
+  2023-08         22.22     22.24      17.69     4.54   20.4%     4.55   20.5%
+  2023-09          0.77      0.78       0.16     0.61   79.2%     0.62   79.5%
+  2023-10          0.00      0.00       0.00     0.00   92.6%    -0.00   -inf%
+  2023-11         22.10     23.23      12.60     9.50   43.0%    10.63   45.8%
+  2023-12         50.27     51.10      43.47     6.80   13.5%     7.63   14.9%
+  2024-01         54.43     55.15      46.77     7.66   14.1%     8.39   15.2%
+  2024-02         22.09     23.00      17.91     4.18   18.9%     5.09   22.1%
+  2024-03         11.49     12.35       5.81     5.68   49.4%     6.54   53.0%
+  2024-04          6.66      7.20       3.10     3.56   53.4%     4.10   56.9%
+  2024-05          2.40      3.02       0.79     1.61   67.3%     2.23   74.0%
   2024-06          0.00      0.00       0.00     0.00   79.9%    -0.00   -inf%
-  2024-07         11.02     10.64       4.77     6.25   56.7%     5.87   55.2%
-  2024-08         18.45     17.24       8.74     9.72   52.7%     8.50   49.3%
-  2024-09          0.72      0.53       0.42     0.30   41.3%     0.11   21.0%
-  2024-10          1.05      1.12       0.38     0.67   64.0%     0.74   66.2%
-  2024-11         29.89     31.76      20.97     8.91   29.8%    10.78   34.0%
-  2024-12         82.10     82.17      70.35    11.75   14.3%    11.81   14.4%
-  2025-01         73.42     74.37      62.47    10.95   14.9%    11.91   16.0%
-  2025-02         66.13     67.67      52.81    13.32   20.1%    14.87   22.0%
-  2025-03         31.98     33.28      20.13    11.85   37.1%    13.15   39.5%
+  2024-07         11.05     10.68       4.82     6.24   56.4%     5.87   54.9%
+  2024-08         17.98     16.79       8.45     9.53   53.0%     8.35   49.7%
+  2024-09          0.69      0.51       0.41     0.29   41.6%     0.11   21.3%
+  2024-10          1.10      1.14       0.41     0.69   62.9%     0.73   64.2%
+  2024-11         29.19     31.12      20.34     8.86   30.3%    10.79   34.7%
+  2024-12         81.48     81.63      69.74    11.74   14.4%    11.89   14.6%
+  2025-01         73.32     74.25      62.39    10.93   14.9%    11.86   16.0%
+  2025-02         65.53     67.07      52.17    13.36   20.4%    14.90   22.2%
+  2025-03         32.13     33.37      20.23    11.90   37.0%    13.14   39.4%
 
 Heating vs Cooling Cost Split
 ─────────────────────────────
                             LP-base  Thermostat   Optimal
-  Heating cost (€)           477.48      491.33    365.86
-  Cooling cost (€)            72.31       70.38     43.61
-  Heating savings vs LP (%)          —           —     23.4%
+  Heating cost (€)           474.17      488.27    362.76
+  Cooling cost (€)            71.63       69.72     43.23
+  Heating savings vs LP (%)          —           —     23.5%
   Cooling savings vs LP (%)          —           —     39.7%
-  Heating savings vs Th (%)          —           —     25.5%
+  Heating savings vs Th (%)          —           —     25.7%
   Cooling savings vs Th (%)          —           —     38.0%

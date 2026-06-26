@@ -13,7 +13,9 @@ def plot_combined_cases(
     plot_cooling_output: bool = False,
     plot_price: bool = True,
     plot_T_exterior: bool = True,
-    plot_wall_temp: bool = True
+    plot_wall_temp: bool = True,
+    compare_label: str = "Baseline",
+    smooth_min: float = 0.0
 ) -> Figure:
     """
     Create a combined plot comparing optimal and baseline cases for temperature and cost metrics.
@@ -26,6 +28,11 @@ def plot_combined_cases(
         plot_price: Whether to plot electricity price
         plot_T_exterior: Whether to plot exterior temperature
         plot_wall_temp: Whether to plot wall temperature
+        compare_label: Legend label for the comparison policy (e.g. "Thermostat")
+        smooth_min: Centred rolling-average window (minutes) applied to the
+            actuator traces only; 0 disables it. The rolling mean of a 0/1 duty
+            signal is the local duty cycle, which reads far better than the raw
+            bang-bang pulses. Window is converted to steps from the series' dt.
 
     Returns:
         matplotlib.figure.Figure: The generated plot
@@ -39,22 +46,36 @@ def plot_combined_cases(
     ax_temp.set_xlim(start_time, end_time)
     ax_cost.set_xlim(start_time, end_time)
 
+    # Optional rolling-average smoothing of the (bang-bang) actuator traces.
+    # Window given in minutes, converted to steps from the series' own dt so it
+    # is resolution-independent; the rolling mean of a 0/1 signal is the duty cycle.
+    if smooth_min > 0 and len(state_opt_df.index) > 1:
+        dt_min = (state_opt_df.index[1] - state_opt_df.index[0]).total_seconds() / 60.0
+        _win = max(1, int(round(smooth_min / dt_min)))
+    else:
+        _win = 1
+
+    def _smooth(series):
+        return series.rolling(_win, center=True, min_periods=1).mean() if _win > 1 else series
+
+    _suffix = f" ({smooth_min:.0f}-min avg)" if _win > 1 else ""
+
     # Single temperature axis
     legends_temp = []
     color = 'tab:red'
     ax_temp.set_ylabel('Temperature (°C)')
-    ax_temp.plot(state_opt_df['InteriorTemperature'], color=color, linestyle='-', label='Optimal Interior Temp')
-    ax_temp.plot(state_base_df['InteriorTemperature'], color=color, linestyle='--', label='Baseline Interior Temp')
-    
+    ax_temp.plot(_smooth(state_opt_df['InteriorTemperature']), color=color, linestyle='-', label='Optimal Interior Temp')
+    ax_temp.plot(_smooth(state_base_df['InteriorTemperature']), color=color, linestyle='--', label=f'{compare_label} Interior Temp')
+
     # Optional additional temperature plots
     if plot_wall_temp:
         color = 'tab:brown'
-        ax_temp.plot(state_opt_df['WallTemperature'], color=color, linestyle='-', label='Optimal Wall Temp')
-        ax_temp.plot(state_base_df['WallTemperature'], color=color, linestyle='--', label='Baseline Wall Temp')
-    
+        ax_temp.plot(_smooth(state_opt_df['WallTemperature']), color=color, linestyle='-', label='Optimal Wall Temp')
+        ax_temp.plot(_smooth(state_base_df['WallTemperature']), color=color, linestyle='--', label=f'{compare_label} Wall Temp')
+
     if plot_T_exterior:
         color = 'tab:pink'
-        ax_temp.plot(state_opt_df['ExteriorTemperature'], color=color, linestyle='-', label='Exterior Temp')
+        ax_temp.plot(_smooth(state_opt_df['ExteriorTemperature']), color=color, linestyle='-', label='Exterior Temp')
 
     legends_temp = [(ax_temp.get_legend_handles_labels()[1], ax_temp, 'tab:red')]
 
@@ -65,7 +86,7 @@ def plot_combined_cases(
         ax_price = ax_cost.twinx()
         color = 'tab:grey'
         ax_price.plot(state_opt_df['Price'], color=color)
-        ax_price.set_ylabel('Price (€/kWh)', color=color)
+        ax_price.set_ylabel('Price (€/kWh)')  # label in default ink; only the tick numbers stay grey
         ax_price.tick_params(axis='y', labelcolor=color)
         legends_cost.append((['Electricity Price'], ax_price, color))
 
@@ -76,21 +97,29 @@ def plot_combined_cases(
         ax_heater_label = []
         if plot_heater_output:
             color = 'tab:red'
-            ax_heater.plot(state_opt_df['HeaterOutput']*100, color=color, linestyle='-', label='Optimal Heater Output')
-            ax_heater.plot(state_base_df['HeaterOutput']*100, color=color, linestyle='--', label='Baseline Heater Output')
+            ax_heater.plot(_smooth(state_opt_df['HeaterOutput'])*100, color=color, linestyle='-', label=f'Optimal Heater{_suffix}')
+            ax_heater.plot(_smooth(state_base_df['HeaterOutput'])*100, color=color, linestyle='--', label=f'{compare_label} Heater{_suffix}')
             ax_heater_label.append('Heater')
 
         # Heater Output Subplot (if plot_heater_output is True)
         if plot_cooling_output:
             color = 'tab:blue'
-            ax_heater.plot(state_opt_df['CoolingOutput']*100, color=color, linestyle='-', label='Optimal Cooling Output')
-            ax_heater.plot(state_base_df['CoolingOutput']*100, color=color, linestyle='--', label='Baseline Cooling Output')
+            ax_heater.plot(_smooth(state_opt_df['CoolingOutput'])*100, color=color, linestyle='-', label=f'Optimal Cooling{_suffix}')
+            ax_heater.plot(_smooth(state_base_df['CoolingOutput'])*100, color=color, linestyle='--', label=f'{compare_label} Cooling{_suffix}')
             ax_heater_label.append('Cooling')
 
-        ax_heater.set_ylabel('/'.join(ax_heater_label)+' Output (%)', fontsize=8)
-        ax_heater.set_ylim(0, 100)
+        _unit = ' duty cycle (%)' if _win > 1 else ' Output (%)'
+        ax_heater.set_ylabel('/'.join(ax_heater_label) + _unit, fontsize=8)
+        ax_heater.set_ylim(-8, 112)  # generous headroom so the 100% saturation plateaus sit clearly below the frame
+        ax_heater.set_yticks(range(0, 101, 25))
         ax_heater.tick_params(axis='y', labelcolor='tab:red')
         legends_cost.append((ax_heater.get_legend_handles_labels()[1], ax_heater, 'tab:red'))
+
+    # The base bottom axis carries no data (price and duty cycle live on twin axes),
+    # so hide its phantom 0–1 left ruler — it otherwise reads as a false ceiling that
+    # the saturating duty-cycle traces appear clipped against.
+    ax_cost.set_yticks([])
+    ax_cost.spines['left'].set_visible(False)
 
     # Place temp legend centered
     for i, (legend_text, ax, color) in enumerate(legends_temp):
@@ -121,7 +150,8 @@ def plot_combined_cases(
 def plot_combined_cases_years(
     state_opt_df: pd.DataFrame,
     state_base_df: pd.DataFrame,
-    plot_T_exterior: bool = True
+    plot_T_exterior: bool = True,
+    compare_label: str = "Baseline"
 ) -> Figure:
     """
     Create a combined yearly plot comparing optimal and baseline cases with daily aggregations.
@@ -179,7 +209,7 @@ def plot_combined_cases_years(
     color = 'tab:red'
     ax_temp.set_ylabel('Temperature (°C)')
     ax_temp.plot(state_opt_df['InteriorTemperature'], color=color, linestyle='-', label='Optimal Interior Temperature')
-    ax_temp.plot(state_base_df['InteriorTemperature'], color='k', linestyle='-', label='Baseline Interior Temperature')
+    ax_temp.plot(state_base_df['InteriorTemperature'], color='k', linestyle='-', label=f'{compare_label} Interior Temperature')
 
     legends_temp = [(ax_temp.get_legend_handles_labels()[1], ax_temp, 'tab:red')]
 
@@ -212,7 +242,7 @@ def plot_combined_cases_years(
     ax_cost2.set_xlabel('Time (h)')
     ax_cost2.set_ylabel('Cumulative Cost (€)')
     ax_cost2.plot(state_opt_df['Cost'].cumsum(), color='tab:red', linestyle='-', label='Optimal Cumulative Cost')
-    ax_cost2.plot(state_base_df['Cost'].cumsum(), color='k', linestyle='-', label='Baseline Cumulative Cost')
+    ax_cost2.plot(state_base_df['Cost'].cumsum(), color='k', linestyle='-', label=f'{compare_label} Cumulative Cost')
     ax_cost2.tick_params(axis='y', labelcolor='k')
     ax_cost2.tick_params(axis='x', rotation=45)
     print(sum(state_base_df['Cost']-state_opt_df['Cost'])/sum(state_base_df['Cost']))
