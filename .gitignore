@@ -44,5 +44,6 @@ docs/papers/*.pdf
 
 # ── Observable Framework ──────────────────────────────────────────────────────
 docs/observable/.observablehq/
+docs/observable/src/.observablehq/
 docs/observable/dist/
 docs/observable/node_modules/

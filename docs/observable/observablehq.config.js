@@ -2,7 +2,7 @@ import katex from "katex";
 import texmath from "markdown-it-texmath";
 
 export default {
-  title: "Strom — Smart Heating Optimisation",
+  title: "Strom: Smart Heating Optimisation",
   base: process.env.OBSERVABLE_BASE || "/",
   root: "src",
   pages: [],
