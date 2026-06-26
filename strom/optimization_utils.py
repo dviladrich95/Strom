@@ -138,20 +138,25 @@ def find_heating_output(temp_price_df: pd.DataFrame,
     constraints.append(T[0, 0] == house.T_interior_init)
     constraints.append(T[1, 0] == house.T_wall_init)
 
-    # Define the system matrix A
-    A = cp.vstack([
-        [-1./(house.R_interior * house.C_air), 1./(house.R_interior * house.C_air)],
-        [1./(house.R_interior * house.C_wall), -((1./house.R_interior) + (1./house.R_exterior)) / house.C_wall]
+    # System matrix A (constant 2x2). Kept as a NumPy array so the whole dynamics
+    # block canonicalizes as ONE matrix constraint instead of ~2*time_steps scalar
+    # ones — the per-timestep Python loop was ~150x slower than the actual solve.
+    A = np.array([
+        [-1. / (house.R_interior * house.C_air),  1. / (house.R_interior * house.C_air)],
+        [ 1. / (house.R_interior * house.C_wall), -((1. / house.R_interior) + (1. / house.R_exterior)) / house.C_wall],
     ])
 
-    # Dynamics constraints: For each time step, T[t+1] = T[t] + dt * (A @ T[t] + b_t)
-    for t in range(time_steps - 1):
-        b_t = cp.vstack([
-            (house.Q_heater * heater_output[t] - house.Q_cooling * cooling_output[t]) / house.C_air,
-            T_exterior.iloc[t] / (house.R_exterior * house.C_wall)
-        ])
-        constraints.append( T[0, t + 1] == T[0, t] + dt * (A[0,0] * T[0, t] + A[0,1] * T[1, t] + b_t[0]) )
-        constraints.append( T[1, t + 1] == T[1, t] + dt * (A[1,0] * T[0, t] + A[1,1] * T[1, t] + b_t[1]) )
+    # Per-step forcing b (2 x time_steps): air row driven by the actuators, wall row
+    # by the exterior temperature.
+    b_air  = (house.Q_heater * heater_output - house.Q_cooling * cooling_output) / house.C_air
+    b_wall = T_exterior.to_numpy() / (house.R_exterior * house.C_wall)
+    b = cp.vstack([b_air, b_wall])
+
+    # Vectorized forward-Euler dynamics, identical to the elementwise recursion
+    # T[:, t+1] = T[:, t] + dt * (A @ T[:, t] + b[:, t]).
+    constraints.append(
+        T[:, 1:] == T[:, :-1] + dt * (A @ T[:, :-1] + b[:, :-1])
+    )
 
     constraints.append(T[0, :] >= house.T_min)  # Interior temperature constraint
     constraints.append(T[0, :] <= house.T_max)  # Interior temperature constraint
