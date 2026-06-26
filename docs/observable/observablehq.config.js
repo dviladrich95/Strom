@@ -10,6 +10,9 @@ export default {
   toc: true,
   pager: false,
   style: "style.css",
-  head: '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex/dist/katex.min.css">',
+
+  // KaTeX stylesheet + shared nav (applies theme early, injects nav bar)
+  head: '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex/dist/katex.min.css"><script src="https://dviladrich95.github.io/nav.js" defer></script>',
+
   markdownIt: (md) => md.use(texmath, { engine: katex, delimiters: "dollars" }),
 };
