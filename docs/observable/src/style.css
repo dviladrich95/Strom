@@ -1,238 +1,124 @@
-/* Custom styles for the Strom case study */
-@import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400&display=swap');
+/* Strom — Smart Heating case study — light "scientific paper" system (Tufte / arXiv register).
+   Tokens first, components second. One accent, one type scale, 8px vertical rhythm.
+   The discipline IS the design: constrain the choices and nothing can clash.
+   Ported from the BiDi V2G dashboard; accent retuned warm for heating. */
+
+@import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;500&display=swap');
 
 :root {
-  --primary-color: #f97316;   /* orange — heating */
-  --primary-light: #fb923c;
-  --primary-deep:  #ea580c;
-  --negative-color: #ef4444;
-  --neutral-color: #f8fafc;
-  --bg-card: rgba(15, 23, 42, 0.6);
-  --border-card: rgba(255, 255, 255, 0.08);
+  /* ── palette: paper + ink + one accent ── */
+  --paper:       #fdfdfb;   /* warm off-white page */
+  --paper-sunk:  #f3f1ea;   /* faint inset for inline code */
+  --ink:         #1a1a1a;   /* body text */
+  --ink-muted:   #5c5c57;   /* captions, secondary */
+  --ink-faint:   #8a8a83;   /* sub-captions, em notes */
+  --rule:        rgba(0,0,0,0.12);   /* hairline */
+  --rule-strong: rgba(0,0,0,0.55);   /* heavy rule under headings/KPIs */
+  --accent:      #b5532a;   /* single muted accent — warm terracotta (heat) */
+  --accent-soft: rgba(181,83,42,0.35);
+  --pos:         #3f7d56;   /* savings / positive (muted forest) */
+  --neg:         #9a3b2e;   /* cost / negative (muted brick) */
+
+  /* ── modular type scale: 1.0rem base (~17px), 1.25 ratio ── */
+  --t-0:  1.0rem;    /* body */
+  --t-1:  1.25rem;   /* h3 */
+  --t-2:  1.5rem;    /* h2 */
+  --t-3:  2.05rem;   /* h1 */
+  --t-sm: 0.85rem;   /* captions */
+  --t-xs: 0.72rem;   /* eyebrow labels */
+  --measure: 46rem;  /* ~760px reading column */
+
+  /* ── hand the tokens to Observable Framework's own chrome ── */
+  --theme-foreground: var(--ink);
+  --theme-background:  var(--paper);
+  --theme-foreground-muted: var(--ink-muted);
+  --theme-foreground-faint: var(--ink-faint);
 }
 
-/* ─── Links ──────────────────────────────────────────────────────── */
-a, a:link, a:visited {
-  color: var(--primary-light) !important;
-  text-decoration: none !important;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  font-weight: 500;
-}
-a:hover {
-  color: #fdba74 !important;
-  text-shadow: 0 0 8px rgba(251, 146, 60, 0.4);
-  text-decoration: underline !important;
-}
-a:active { color: var(--primary-deep) !important; }
-
-h1 a, h2 a, h3 a, h4 a, h5 a, h6 a {
-  color: inherit !important;
-  text-decoration: none !important;
-  font-weight: inherit !important;
-}
-h1 a:hover, h2 a:hover, h3 a:hover, h4 a:hover {
-  color: var(--primary-light) !important;
-  text-decoration: none !important;
-}
-
-/* ─── Page background ────────────────────────────────────────────── */
+/* ── page canvas ── */
 html, body {
-  background: radial-gradient(circle at 50% 0%, #0f172a 0%, #020617 100%) !important;
-  color: #f8fafc !important;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--paper);
+  color: var(--ink);
   -webkit-font-smoothing: antialiased;
-  margin: 0;
-  padding: 24px;
-  min-height: 100vh;
-}
-#observablehq-center, #observablehq-main, .observablehq {
-  background: transparent !important;
-  color: #f8fafc !important;
 }
 
-/* ─── Scrollbar ──────────────────────────────────────────────────── */
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.5); }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+/* narrow the content to a reading measure; the toc stays at the right */
+#observablehq-main, .observablehq {
+  max-width: var(--measure);
+  margin-left: auto;
+  margin-right: auto;
+}
 
-/* ─── Prose ──────────────────────────────────────────────────────── */
+/* ── typography ── */
 .observablehq p,
 .observablehq li,
 .observablehq blockquote {
   font-family: 'Source Serif 4', Georgia, 'Times New Roman', serif;
-  font-size: 1.05rem;
-  line-height: 1.8;
-  color: #e2e8f0;
+  font-size: var(--t-0);
+  line-height: 1.65;
+  color: var(--ink);
 }
-.observablehq p code,
-.observablehq li code {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  font-size: 0.88rem;
-  background: rgba(255,255,255,0.07);
-  border-radius: 4px;
+.observablehq h1,
+.observablehq h2,
+.observablehq h3 {
+  font-family: 'Source Serif 4', Georgia, serif;
+  color: var(--ink);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.observablehq h1 { font-size: var(--t-3); line-height: 1.15; margin: 0 0 0.5rem; }
+.observablehq h2 {
+  font-size: var(--t-2);
+  margin: 2.75rem 0 1rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--rule);
+}
+.observablehq h3 { font-size: var(--t-1); margin: 1.5rem 0 0.4rem; }
+
+/* heading anchor links stay invisible, not accent-coloured */
+.observablehq h1 a, .observablehq h2 a, .observablehq h3 a {
+  color: inherit; border-bottom: none;
+}
+
+/* tabular figures wherever numbers carry meaning */
+.tnum, .metric-value { font-variant-numeric: tabular-nums; }
+
+/* inline code */
+.observablehq :not(pre) > code {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.85em;
+  background: var(--paper-sunk);
+  border-radius: 3px;
   padding: 1px 5px;
 }
 
-/* ─── Headings ───────────────────────────────────────────────────── */
-h1 {
-  font-size: 2.3rem;
-  font-weight: 800;
-  background: linear-gradient(135deg, #ffffff 0%, #94a3b8 100%) !important;
-  -webkit-background-clip: text !important;
-  -webkit-text-fill-color: transparent !important;
-  margin-bottom: 8px;
-  margin-top: 0;
-}
-h2 {
-  font-size: 1.35rem;
-  font-weight: 700;
-  color: #ffffff !important;
-  border-bottom: 1px solid rgba(255,255,255,0.08) !important;
-  padding-bottom: 8px;
-  margin-top: 0;
-  margin-bottom: 16px;
-  letter-spacing: -0.02em;
+/* block quote — a quiet aside set off by a rule (used for the FEM note etc.) */
+.observablehq blockquote {
+  border-left: 2px solid var(--rule-strong);
+  margin: 1.5rem 0;
+  padding: 0.2rem 0 0.2rem 1.1rem;
+  color: var(--ink-muted);
+  font-style: italic;
 }
 
-/* ─── tl;dr box ──────────────────────────────────────────────────── */
-.tldr-box {
-  max-width: 720px;
-  margin: 0 auto 2rem auto;
-  text-align: center;
+/* links — one accent, a quiet underline (no glow, no !important wars) */
+.observablehq a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid var(--accent-soft);
+  transition: border-color 0.15s ease;
 }
-.tldr-label {
-  display: inline-block;
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--primary-color);
-  border: 1px solid rgba(249,115,22,0.35);
-  border-radius: 20px;
-  padding: 3px 14px;
-  margin-bottom: 12px;
-}
-.tldr-text {
-  font-family: 'Source Serif 4', Georgia, serif !important;
-  font-size: 1.08rem !important;
-  line-height: 1.75 !important;
-  color: #cbd5e1 !important;
-  border-top: 1px solid rgba(255,255,255,0.07);
-  border-bottom: 1px solid rgba(255,255,255,0.07);
-  padding: 16px 0;
-  margin: 0 !important;
-}
-.tldr-text strong { color: #f1f5f9; font-weight: 600; }
-.tldr-text a { color: var(--primary-light) !important; font-weight: 500; }
+.observablehq a:hover { border-bottom-color: var(--accent); }
 
-.tldr-findings {
-  font-family: 'Source Serif 4', Georgia, serif;
-  font-size: 0.98rem;
-  line-height: 1.65;
-  color: #cbd5e1;
-  text-align: left;
-  margin: 0 !important;
-  padding: 12px 0 14px 1.3rem;
-  border-bottom: 1px solid rgba(255,255,255,0.07);
-}
-.tldr-findings li { margin-bottom: 8px; }
-.tldr-findings strong { color: #f1f5f9; font-weight: 600; }
-.tldr-findings em { color: #64748b; font-size: 0.85rem; }
-.tldr-findings a { color: var(--primary-light) !important; font-weight: 500; }
+/* ── KaTeX display equations: center, give them room to breathe ── */
+.observablehq mjx-container,
+.observablehq .katex-display { margin: 1.4rem 0; overflow-x: auto; overflow-y: hidden; }
 
-/* ─── Glassmorphism card ─────────────────────────────────────────── */
-.premium-card {
-  background: var(--bg-card) !important;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--border-card) !important;
-  border-radius: 16px;
-  padding: 24px;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.5) !important;
-  transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
-}
-.premium-card:hover {
-  border-color: rgba(249,115,22,0.2) !important;
-  box-shadow: 0 10px 40px rgba(249,115,22,0.04) !important;
-}
-
-/* ─── KPI metrics row ────────────────────────────────────────────── */
-.metrics-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 16px;
-  margin: 24px 0;
-}
-.metric-card {
-  text-align: center;
-  background: rgba(8,13,28,0.5) !important;
-  border: 1px solid rgba(255,255,255,0.05) !important;
-  border-radius: 12px;
-  padding: 18px;
-  transition: all 0.2s ease;
-}
-.metric-card:hover {
-  border-color: rgba(249,115,22,0.2) !important;
-  background: rgba(8,13,28,0.7) !important;
-}
-.metric-title {
-  font-size: 0.78rem;
-  color: #94a3b8 !important;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 6px;
-}
-.metric-value {
-  font-size: 1.9rem;
-  font-weight: 800;
-}
-.metric-value.positive { color: var(--primary-light) !important; text-shadow: 0 0 10px rgba(251,146,60,0.25); }
-.metric-value.negative { color: #f87171 !important; }
-.metric-value.neutral  { color: #f1f5f9 !important; }
-
-/* ─── Tables ─────────────────────────────────────────────────────── */
-.observablehq table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 24px 0;
-  border-radius: 12px;
-  overflow: hidden;
-  border: 1px solid rgba(255,255,255,0.15) !important;
-  background: rgba(15,23,42,0.45);
-}
-.observablehq th {
-  background: rgba(249,115,22,0.08) !important;
-  color: #ffffff !important;
-  font-weight: 700 !important;
-  font-size: 0.92rem;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  padding: 14px 18px !important;
-  border: 1px solid rgba(255,255,255,0.15) !important;
-  text-align: left;
-}
-.observablehq td {
-  padding: 14px 18px !important;
-  font-size: 0.95rem;
-  line-height: 1.6;
-  border: 1px solid rgba(255,255,255,0.1) !important;
-  color: #cbd5e1 !important;
-  vertical-align: middle;
-}
-.observablehq tr:nth-child(even) td { background: rgba(255,255,255,0.015); }
-.observablehq tr:hover td {
-  background: rgba(249,115,22,0.04) !important;
-  color: #ffffff !important;
-}
-
-/* ─── Plot images ────────────────────────────────────────────────── */
+/* ── figures: images open on the page, framed only by a hairline (Tufte) ── */
 .plot-figure {
-  max-width: 820px;
-  margin: 24px auto;
-  border-radius: 12px;
-  overflow: hidden;
-  border: 1px solid rgba(255,255,255,0.08);
+  margin: 2.25rem 0;
+  border-top: 1px solid var(--rule);
+  padding-top: 1.25rem;
 }
 .plot-figure img {
   width: 100%;
@@ -240,10 +126,170 @@ h2 {
   display: block;
 }
 .plot-caption {
-  font-size: 0.85rem;
-  color: #64748b;
-  text-align: center;
-  padding: 10px 16px;
-  background: rgba(8,13,28,0.4);
+  font-family: 'Source Serif 4', Georgia, serif;
+  font-size: var(--t-sm);
+  line-height: 1.55;
+  color: var(--ink-muted);
+  text-align: left;
+  padding-top: 0.5rem;
   font-style: italic;
+}
+
+/* ── KPI row: figures set under a rule ── */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1.5rem;
+  margin: 1.75rem 0;
+}
+.metric-card {
+  background: none;
+  border: none;
+  border-radius: 0;
+  border-top: 2px solid var(--rule-strong);
+  padding: 0.5rem 0 0;
+  text-align: left;
+}
+.metric-title {
+  font-family: 'Source Serif 4', Georgia, serif;
+  font-size: var(--t-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-muted);
+  margin-bottom: 0.4rem;
+}
+.metric-value {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 1.7rem;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--ink);
+}
+.metric-value.positive { color: var(--pos); }
+.metric-value.negative { color: var(--neg); }
+.metric-value.neutral  { color: var(--ink); }
+
+/* ── tl;dr / abstract — a paper abstract, rules above and below ── */
+.tldr-box { max-width: var(--measure); margin: 0 0 2.5rem; }
+.tldr-label {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: var(--t-xs);
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 0.5rem;
+}
+.tldr-text {
+  font-family: 'Source Serif 4', Georgia, serif;
+  font-size: 1.05rem;
+  line-height: 1.7;
+  color: var(--ink);
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  padding: 1rem 0;
+  margin: 0;
+}
+.tldr-text strong { font-weight: 600; }
+.tldr-findings {
+  font-family: 'Source Serif 4', Georgia, serif;
+  font-size: 0.98rem;
+  line-height: 1.6;
+  color: var(--ink);
+  margin: 0;
+  padding: 0.75rem 0 0.75rem 1.2rem;
+  border-bottom: 1px solid var(--rule);
+}
+.tldr-findings li { margin-bottom: 0.5rem; }
+.tldr-findings strong { font-weight: 600; }
+.tldr-findings em { color: var(--ink-faint); font-style: italic; }
+
+/* ── tables — Tufte: horizontal hairlines only, no fills, no verticals ── */
+.observablehq table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5rem 0;
+  font-size: 0.95rem;
+  background: none;
+}
+.observablehq th {
+  font-family: 'Source Serif 4', Georgia, serif;
+  font-weight: 600;
+  text-align: left;
+  color: var(--ink);
+  border: none;
+  border-bottom: 1.5px solid var(--rule-strong);
+  padding: 0.5rem 0.75rem;
+}
+.observablehq td {
+  border: none;
+  border-bottom: 1px solid var(--rule);
+  padding: 0.5rem 0.75rem;
+  color: var(--ink);
+  vertical-align: top;
+}
+.observablehq tbody tr:last-child td { border-bottom: 1.5px solid var(--rule-strong); }
+
+/* ── table of contents: a sticky side rail, always visible while scrolling ── */
+/* DOM order in #observablehq-center is [toc, main, footer]; place explicitly so
+   the content stays in column 1 and the toc holds a sticky column 2. */
+@media (min-width: 1000px) {
+  #observablehq-center {
+    display: grid !important;
+    grid-template-columns: minmax(0, var(--measure)) 13rem;
+    column-gap: 2.5rem;
+    justify-content: center;
+    align-items: start;
+  }
+  #observablehq-main {
+    grid-column: 1;
+    margin: 0 !important;             /* grid centers the pair; don't re-center the column */
+    max-width: var(--measure);
+  }
+  #observablehq-footer { grid-column: 1; }
+  #observablehq-toc {
+    grid-column: 2;
+    grid-row: 1 / 99;                 /* span full height so sticky has room to travel */
+    position: sticky !important;
+    top: 1.5rem;
+    align-self: start;
+    width: auto !important;
+    max-height: calc(100vh - 3rem);
+    overflow-y: auto;
+    margin: 0 !important;
+    padding: 0;
+  }
+}
+
+/* TOC typography — a quiet vertical-rule index (Tufte) */
+#observablehq-toc nav > div {        /* the "Contents" label */
+  font-family: 'JetBrains Mono', monospace;
+  font-size: var(--t-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink-faint);
+  margin-bottom: 0.6rem;
+}
+#observablehq-toc ol {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  border-left: 1px solid var(--rule);
+}
+#observablehq-toc li { margin: 0; }
+#observablehq-toc a {
+  display: block;
+  padding: 0.28rem 0 0.28rem 0.9rem;
+  margin-left: -1px;
+  border-left: 2px solid transparent;
+  font-family: 'Source Serif 4', Georgia, serif;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  color: var(--ink-muted);
+  text-decoration: none;
+}
+#observablehq-toc a:hover {
+  color: var(--ink);
+  border-left-color: var(--accent);
 }

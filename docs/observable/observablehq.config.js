@@ -6,7 +6,7 @@ export default {
   base: process.env.OBSERVABLE_BASE || "/",
   root: "src",
   pages: [],
-  theme: ["dark", "slate"],
+  theme: "air", // light, neutral base; paper/Tufte aesthetic applied in style.css
   toc: true,
   pager: false,
   style: "style.css",
