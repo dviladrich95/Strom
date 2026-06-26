@@ -1,98 +1,21 @@
-/* Strom — Smart Heating case study — light "scientific paper" system (Tufte / arXiv register).
-   Tokens first, components second. One accent, one type scale, 8px vertical rhythm.
-   The discipline IS the design: constrain the choices and nothing can clash.
-   Ported from the BiDi V2G dashboard; accent retuned warm for heating. */
+/* Strom — Smart Heating Optimisation — project-specific overrides.
+   Shared Tufte/paper base is imported from the design-system repo:
+   https://dviladrich95.github.io/style.css */
 
-@import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://dviladrich95.github.io/style.css');
 
+/* ── Strom accent: warm terracotta for heating context ── */
 :root {
-  /* ── palette: paper + ink + one accent ── */
-  --paper:       #fdfdfb;   /* warm off-white page */
-  --paper-sunk:  #f3f1ea;   /* faint inset for inline code */
-  --ink:         #1a1a1a;   /* body text */
-  --ink-muted:   #5c5c57;   /* captions, secondary */
-  --ink-faint:   #8a8a83;   /* sub-captions, em notes */
-  --rule:        rgba(0,0,0,0.12);   /* hairline */
-  --rule-strong: rgba(0,0,0,0.55);   /* heavy rule under headings/KPIs */
-  --accent:      #b5532a;   /* single muted accent — warm terracotta (heat) */
+  --accent:      #b5532a;
   --accent-soft: rgba(181,83,42,0.35);
-  --pos:         #3f7d56;   /* savings / positive (muted forest) */
-  --neg:         #9a3b2e;   /* cost / negative (muted brick) */
-
-  /* ── modular type scale: 1.0rem base (~17px), 1.25 ratio ── */
-  --t-0:  1.0rem;    /* body */
-  --t-1:  1.25rem;   /* h3 */
-  --t-2:  1.5rem;    /* h2 */
-  --t-3:  2.05rem;   /* h1 */
-  --t-sm: 0.85rem;   /* captions */
-  --t-xs: 0.72rem;   /* eyebrow labels */
-  --measure: 46rem;  /* ~760px reading column */
-
-  /* ── hand the tokens to Observable Framework's own chrome ── */
-  --theme-foreground: var(--ink);
-  --theme-background:  var(--paper);
-  --theme-foreground-muted: var(--ink-muted);
-  --theme-foreground-faint: var(--ink-faint);
+  --pos:         #3f7d56;   /* savings — forest */
+  --neg:         #9a3b2e;   /* cost increase — brick */
 }
 
-/* ── page canvas ── */
-html, body {
-  background: var(--paper);
-  color: var(--ink);
-  -webkit-font-smoothing: antialiased;
-}
+/* h3 needs a touch more top breathing room in long-form prose */
+.observablehq h3 { margin: 1.5rem 0 0.4rem; }
 
-/* narrow the content to a reading measure; the toc stays at the right */
-#observablehq-main, .observablehq {
-  max-width: var(--measure);
-  margin-left: auto;
-  margin-right: auto;
-}
-
-/* ── typography ── */
-.observablehq p,
-.observablehq li,
-.observablehq blockquote {
-  font-family: 'Source Serif 4', Georgia, 'Times New Roman', serif;
-  font-size: var(--t-0);
-  line-height: 1.65;
-  color: var(--ink);
-}
-.observablehq h1,
-.observablehq h2,
-.observablehq h3 {
-  font-family: 'Source Serif 4', Georgia, serif;
-  color: var(--ink);
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-.observablehq h1 { font-size: var(--t-3); line-height: 1.15; margin: 0 0 0.5rem; }
-.observablehq h2 {
-  font-size: var(--t-2);
-  margin: 2.75rem 0 1rem;
-  padding-bottom: 0.35rem;
-  border-bottom: 1px solid var(--rule);
-}
-.observablehq h3 { font-size: var(--t-1); margin: 1.5rem 0 0.4rem; }
-
-/* heading anchor links stay invisible, not accent-coloured */
-.observablehq h1 a, .observablehq h2 a, .observablehq h3 a {
-  color: inherit; border-bottom: none;
-}
-
-/* tabular figures wherever numbers carry meaning */
-.tnum, .metric-value { font-variant-numeric: tabular-nums; }
-
-/* inline code */
-.observablehq :not(pre) > code {
-  font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 0.85em;
-  background: var(--paper-sunk);
-  border-radius: 3px;
-  padding: 1px 5px;
-}
-
-/* block quote — a quiet aside set off by a rule (used for the FEM note etc.) */
+/* blockquote with left rule — used for the FEM note and asides */
 .observablehq blockquote {
   border-left: 2px solid var(--rule-strong);
   margin: 1.5rem 0;
@@ -101,195 +24,11 @@ html, body {
   font-style: italic;
 }
 
-/* links — one accent, a quiet underline (no glow, no !important wars) */
-.observablehq a {
-  color: var(--accent);
-  text-decoration: none;
-  border-bottom: 1px solid var(--accent-soft);
-  transition: border-color 0.15s ease;
-}
-.observablehq a:hover { border-bottom-color: var(--accent); }
-
-/* ── KaTeX display equations: center, give them room to breathe ── */
+/* KaTeX / MathJax display equations */
 .observablehq mjx-container,
 .observablehq .katex-display { margin: 1.4rem 0; overflow-x: auto; overflow-y: hidden; }
 
-/* ── figures: images open on the page, framed only by a hairline (Tufte) ── */
-.plot-figure {
-  margin: 2.25rem 0;
-  border-top: 1px solid var(--rule);
-  padding-top: 1.25rem;
-}
-.plot-figure img {
-  width: 100%;
-  height: auto;
-  display: block;
-}
-.plot-caption {
-  font-family: 'Source Serif 4', Georgia, serif;
-  font-size: var(--t-sm);
-  line-height: 1.55;
-  color: var(--ink-muted);
-  text-align: left;
-  padding-top: 0.5rem;
-  font-style: italic;
-}
-
-/* ── KPI row: figures set under a rule ── */
-.metrics-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 1.5rem;
-  margin: 1.75rem 0;
-}
-.metric-card {
-  background: none;
-  border: none;
-  border-radius: 0;
-  border-top: 2px solid var(--rule-strong);
-  padding: 0.5rem 0 0;
-  text-align: left;
-}
-.metric-title {
-  font-family: 'Source Serif 4', Georgia, serif;
-  font-size: var(--t-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--ink-muted);
-  margin-bottom: 0.4rem;
-}
-.metric-value {
-  font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 1.7rem;
-  font-weight: 500;
-  line-height: 1;
-  color: var(--ink);
-}
+/* metrics margin and colour overrides */
+.metrics-grid { margin: 1.75rem 0; }
 .metric-value.positive { color: var(--pos); }
 .metric-value.negative { color: var(--neg); }
-.metric-value.neutral  { color: var(--ink); }
-
-/* ── tl;dr / abstract — a paper abstract, rules above and below ── */
-.tldr-box { max-width: var(--measure); margin: 0 0 2.5rem; }
-.tldr-label {
-  display: inline-block;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: var(--t-xs);
-  font-weight: 500;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--accent);
-  margin-bottom: 0.5rem;
-}
-.tldr-text {
-  font-family: 'Source Serif 4', Georgia, serif;
-  font-size: 1.05rem;
-  line-height: 1.7;
-  color: var(--ink);
-  border-top: 1px solid var(--rule);
-  border-bottom: 1px solid var(--rule);
-  padding: 1rem 0;
-  margin: 0;
-}
-.tldr-text strong { font-weight: 600; }
-.tldr-findings {
-  font-family: 'Source Serif 4', Georgia, serif;
-  font-size: 0.98rem;
-  line-height: 1.6;
-  color: var(--ink);
-  margin: 0;
-  padding: 0.75rem 0 0.75rem 1.2rem;
-  border-bottom: 1px solid var(--rule);
-}
-.tldr-findings li { margin-bottom: 0.5rem; }
-.tldr-findings strong { font-weight: 600; }
-.tldr-findings em { color: var(--ink-faint); font-style: italic; }
-
-/* ── tables — Tufte: horizontal hairlines only, no fills, no verticals ── */
-.observablehq table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 1.5rem 0;
-  font-size: 0.95rem;
-  background: none;
-}
-.observablehq th {
-  font-family: 'Source Serif 4', Georgia, serif;
-  font-weight: 600;
-  text-align: left;
-  color: var(--ink);
-  border: none;
-  border-bottom: 1.5px solid var(--rule-strong);
-  padding: 0.5rem 0.75rem;
-}
-.observablehq td {
-  border: none;
-  border-bottom: 1px solid var(--rule);
-  padding: 0.5rem 0.75rem;
-  color: var(--ink);
-  vertical-align: top;
-}
-.observablehq tbody tr:last-child td { border-bottom: 1.5px solid var(--rule-strong); }
-
-/* ── table of contents: a sticky side rail, always visible while scrolling ── */
-/* DOM order in #observablehq-center is [toc, main, footer]; place explicitly so
-   the content stays in column 1 and the toc holds a sticky column 2. */
-@media (min-width: 1000px) {
-  #observablehq-center {
-    display: grid !important;
-    grid-template-columns: minmax(0, var(--measure)) 13rem;
-    column-gap: 2.5rem;
-    justify-content: center;
-    align-items: start;
-  }
-  #observablehq-main {
-    grid-column: 1;
-    margin: 0 !important;             /* grid centers the pair; don't re-center the column */
-    max-width: var(--measure);
-  }
-  #observablehq-footer { grid-column: 1; }
-  #observablehq-toc {
-    grid-column: 2;
-    grid-row: 1 / 99;                 /* span full height so sticky has room to travel */
-    position: sticky !important;
-    top: 1.5rem;
-    align-self: start;
-    width: auto !important;
-    max-height: calc(100vh - 3rem);
-    overflow-y: auto;
-    margin: 0 !important;
-    padding: 0;
-  }
-}
-
-/* TOC typography — a quiet vertical-rule index (Tufte) */
-#observablehq-toc nav > div {        /* the "Contents" label */
-  font-family: 'JetBrains Mono', monospace;
-  font-size: var(--t-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--ink-faint);
-  margin-bottom: 0.6rem;
-}
-#observablehq-toc ol {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  border-left: 1px solid var(--rule);
-}
-#observablehq-toc li { margin: 0; }
-#observablehq-toc a {
-  display: block;
-  padding: 0.28rem 0 0.28rem 0.9rem;
-  margin-left: -1px;
-  border-left: 2px solid transparent;
-  font-family: 'Source Serif 4', Georgia, serif;
-  font-size: 0.82rem;
-  line-height: 1.35;
-  color: var(--ink-muted);
-  text-decoration: none;
-}
-#observablehq-toc a:hover {
-  color: var(--ink);
-  border-left-color: var(--accent);
-}
