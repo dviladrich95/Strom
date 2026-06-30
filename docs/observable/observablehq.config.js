@@ -12,7 +12,7 @@ export default {
   style: "style.css",
 
   // KaTeX stylesheet + shared nav (applies theme early, injects nav bar)
-  head: '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex/dist/katex.min.css"><script src="https://dviladrich95.github.io/nav.js" defer></script>',
+  head: '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex/dist/katex.min.css"><script src="https://danielviladrich.github.io/nav.js" defer></script>',
 
   markdownIt: (md) => md.use(texmath, { engine: katex, delimiters: "dollars" }),
 };
